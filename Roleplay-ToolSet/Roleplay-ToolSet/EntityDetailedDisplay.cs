@@ -7,6 +7,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.IO;
+using System.Runtime.Serialization;
+using Newtonsoft.Json;
 
 namespace RoleplayToolSet
 {
@@ -186,6 +189,7 @@ namespace RoleplayToolSet
         public EntityDetailedDisplay()
         {
             InitializeComponent();
+            EntityRefresh();
         }
 
         private void EntityRefresh()
@@ -199,7 +203,7 @@ namespace RoleplayToolSet
             if (_entity != null)
             {
                 // Loop through all attributes and add to display
-                foreach (Entity.Attribute attribute in _entity.GetAttributes())
+                foreach (Entity.Attribute attribute in _entity.Attributes)
                 {
                     // Make & format viewer
                     AttributeViewer attributeViewer = new AttributeViewer(attribute, true)
@@ -286,6 +290,71 @@ namespace RoleplayToolSet
                 menu.MenuItems.Add(Enum.GetName(typeof(Entity.AttributeType), type), eventHandler);
             }
             menu.Show(buttonAddAttibute, buttonAddAttibute.PointToClient(Cursor.Position));
+        }
+
+        private void ButtonSaveEntity_Click(object sender, EventArgs e)
+        {
+            SaveFileDialog fileDialog = new SaveFileDialog
+            {
+                DefaultExt = "RPTSEntity",
+                Filter = "Entity File|*.RPTSEntity|All Files|*.*"
+            };
+            fileDialog.ShowDialog();
+            if (fileDialog.FileName != "")
+            {
+                try
+                {
+                    _entity.Save(fileDialog.FileName);
+                }
+                catch (JsonSerializationException exception)
+                {
+                    string message = "An error was encountered when trying to serialise the entity: " + exception.Message + "\n" + exception.StackTrace;
+                    MessageBox.Show(message, "Export error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private void ButtonLoadEntity_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog fileDialog = new OpenFileDialog
+            {
+                DefaultExt = "RPTSEntity",
+                Filter = "Entity File|*.RPTSEntity|All Files|*.*"
+            };
+            fileDialog.ShowDialog();
+            if (fileDialog.FileName != "")
+            {
+                //try
+                //{
+                    Entity entity = Entity.Load(fileDialog.FileName);
+                    _entityCollection.AddEntity(entity);
+                //}
+                //    catch (Exception exception)
+                //    {
+                //        string message;
+
+                //        if (exception is UnauthorizedAccessException ||
+                //            exception is PathTooLongException ||
+                //            exception is DirectoryNotFoundException ||
+                //            exception is FileNotFoundException)
+                //        {
+                //            message = "An error was encountered when trying to open the file: ";
+                //        }
+                //        else if (exception is JsonSerializationException ||
+                //                 exception is JsonReaderException ||
+                //                 exception is FormatException)
+                //        {
+                //            message = "An error was encountered when trying to deserialise the entity: ";
+                //        }
+                //        else
+                //        {
+                //            throw exception;
+                //        }
+
+                //        message += exception.Message;
+                //        MessageBox.Show(message, "Import error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                //    }
+            }
         }
     }
 }

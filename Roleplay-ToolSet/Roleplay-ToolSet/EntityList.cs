@@ -155,7 +155,7 @@ namespace RoleplayToolSet
             }
 
             // Get and loop over attributes to make any needed new columns and then populate the above dictionary
-            List<Entity.Attribute> attributes = entity.GetAttributes();
+            List<Entity.Attribute> attributes = entity.Attributes;
             foreach (Entity.Attribute attribute in attributes)
             {
                 AddAttribute(row, attribute);

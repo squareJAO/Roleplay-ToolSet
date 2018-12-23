@@ -5,8 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Drawing;
 using System.IO;
-using Newtonsoft.Json;
 using System.Windows.Forms;
+using Newtonsoft.Json;
+using System.Security.Cryptography;
 
 namespace RoleplayToolSet
 {
@@ -45,8 +46,7 @@ namespace RoleplayToolSet
     }
 
     public delegate void EntityAttributeEventHandler(Entity.Attribute attribute, EventArgs eventArgs);
-
-    [Serializable]
+    
     public class Entity
     {
         // ---------------------------------------------------------
@@ -77,6 +77,7 @@ namespace RoleplayToolSet
             // The attribute group can't be renamed by the user - eg name
             public bool NameLocked { get; private set; }
 
+            [JsonConstructor]
             public AttributeFormat(int style = 0, bool deleteIfEmpty=false, bool deleteLocked=false, bool nameLocked = false)
             {
                 Style = style;
@@ -102,7 +103,9 @@ namespace RoleplayToolSet
         {
             public AttributeFormat Format { get; private set; }
             public string GroupName { get; private set; }
-            public Entity ParentEntity { get; private set; }
+
+            [JsonIgnore]
+            public Entity ParentEntity { get; internal set; }
 
             public event AttributeEventHandler ValueChanged;
 
@@ -127,6 +130,10 @@ namespace RoleplayToolSet
                 }
             }
 
+            /// <summary>
+            /// Changes the name of the group that this entity belongs to
+            /// </summary>
+            /// <param name="name">The new name to take</param>
             public void ChangeGroupName(string name)
             {
                 if (Format == null || !Format.NameLocked)
@@ -155,12 +162,19 @@ namespace RoleplayToolSet
         [Serializable]
         public class NumericAttribute : Attribute
         {
-            private decimal _number;
+            public decimal Number { get; private set; }
 
             public NumericAttribute(string groupName, Entity parentEntity, AttributeFormat format)
+                : this(groupName, parentEntity, format, 0)
+            {
+
+            }
+
+            [JsonConstructor]
+            public NumericAttribute(string groupName, Entity parentEntity, AttributeFormat format, decimal number)
                 : base(groupName, parentEntity, format)
             {
-                _number = 0;
+                Number = number;
             }
 
             public override Control GetEditControl()
@@ -181,7 +195,7 @@ namespace RoleplayToolSet
                     Maximum = decimal.MaxValue,
                     DecimalPlaces = 3,
                     TextAlign = HorizontalAlignment.Right,
-                    Value = _number
+                    Value = Number
                 };
                 editControl.Controls.Add(numberBox);
 
@@ -198,7 +212,7 @@ namespace RoleplayToolSet
                 // Bind events
                 changeButton.Click += (object sender, EventArgs e) =>
                 {
-                    _number = numberBox.Value;
+                    Number = numberBox.Value;
                     InvokeValueChanged();
                 }; // Create a new lambda while everything is in scope
 
@@ -213,15 +227,52 @@ namespace RoleplayToolSet
 
             public override object GetListViewValue()
             {
-                return _number.ToString();
+                return Number.ToString();
             }
         }
 
         [Serializable]
         public class StringAttribute : Attribute
         {
-            private string _string;
-            private string _rtfstring;
+            [Serializable]
+            public class RTFString
+            {
+                public string RTF { get; private set; }
+
+                [JsonConstructor]
+                public RTFString(string rtf)
+                {
+                    SetString(rtf);
+                }
+
+                public void SetString(string value)
+                {
+                    if ((value != null) &&
+                        (value.Trim().StartsWith("{\\rtf")))
+                    {
+                        RTF = value;
+                    }
+                    else
+                    {
+                        using (RichTextBox rtfTemp = new RichTextBox())
+                        {
+                            rtfTemp.Text = value;
+                            RTF = rtfTemp.Rtf;
+                        }
+                    }
+                }
+
+                public string GetPlainText()
+                {
+                    using (RichTextBox rtfTemp = new RichTextBox())
+                    {
+                        rtfTemp.Rtf = RTF;
+                        return rtfTemp.Text;
+                    }
+                }
+            }
+
+            public RTFString Value { get; private set; }
 
             public StringAttribute(string groupName, Entity parentEntity, AttributeFormat format)
                 : this(groupName, parentEntity, format, "")
@@ -230,10 +281,16 @@ namespace RoleplayToolSet
             }
 
             public StringAttribute(string groupName, Entity parentEntity, AttributeFormat format, string value)
+                : this(groupName, parentEntity, format, new RTFString(value))
+            {
+
+            }
+
+            [JsonConstructor]
+            public StringAttribute(string groupName, Entity parentEntity, AttributeFormat format, RTFString value)
                 : base(groupName, parentEntity, format)
             {
-                _string = value;
-                _rtfstring = null;
+                Value = value ?? new RTFString("");
             }
 
             public override Control GetEditControl()
@@ -250,14 +307,7 @@ namespace RoleplayToolSet
                     Anchor = AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Top | AnchorStyles.Right,
                     Size = new Size(100, 80)
                 };
-                if (_rtfstring == null)
-                {
-                    textBox.Text = _string;
-                }
-                else
-                {
-                    textBox.Rtf = _rtfstring;
-                }
+                textBox.Rtf = Value.RTF;
                 textBox.BorderStyle = BorderStyle.None;
                 textBox.ScrollBars = RichTextBoxScrollBars.None;
                 editControl.Controls.Add(textBox);
@@ -275,8 +325,7 @@ namespace RoleplayToolSet
                 // Bind events
                 changeButton.Click += (object sender, EventArgs e) =>
                 {
-                    _string = textBox.Text;
-                    _rtfstring = textBox.Rtf;
+                    Value.SetString(textBox.Rtf);
                     InvokeValueChanged();
                 }; // Create a new lambda while everything is in scope
                 // Add some nice formatting for text box
@@ -317,7 +366,7 @@ namespace RoleplayToolSet
 
             public override object GetListViewValue()
             {
-                return _string;
+                return Value.GetPlainText();
             }
         }
 
@@ -350,14 +399,22 @@ namespace RoleplayToolSet
             }
 
             [JsonConverter(typeof(ImageConverter))]
-            private Image _image;
+            public Image Image { get; private set; }
 
+            [NonSerialized]
             private static readonly Image nullImage = Image.FromFile("images/Portrait_Placeholder.png");
 
             public ImageAttribute(string groupName, Entity parentEntity, AttributeFormat format)
+                : this(groupName, parentEntity, format, nullImage)
+            {
+
+            }
+
+            [JsonConstructor]
+            public ImageAttribute(string groupName, Entity parentEntity, AttributeFormat format, Image image)
                 : base(groupName, parentEntity, format)
             {
-                _image = nullImage;
+                Image = image;
             }
 
             public override Control GetEditControl()
@@ -371,7 +428,7 @@ namespace RoleplayToolSet
                 // Make & Add image
                 PictureBox picture = new PictureBox
                 {
-                    Image = _image,
+                    Image = Image,
                     Size = new Size(100, 100),
                     Location = new Point(0, 0),
                     Anchor = AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Top | AnchorStyles.Right,
@@ -396,8 +453,8 @@ namespace RoleplayToolSet
                     // Result = ok if the user opens something
                     if (result == DialogResult.OK)
                     {
-                        _image = Image.FromFile(fileDialog.FileName);
-                        picture.Image = _image;
+                        Image = Image.FromFile(fileDialog.FileName);
+                        picture.Image = Image;
                         InvokeValueChanged();
                     }
                 }; // Create a new lambda while everything is in scope
@@ -413,19 +470,26 @@ namespace RoleplayToolSet
 
             public override object GetListViewValue()
             {
-                return _image;
+                return Image;
             }
         }
 
         [Serializable]
         public class BoolAttribute : Attribute
         {
-            private bool _value;
+            public bool Value { get; private set; }
 
             public BoolAttribute(string groupName, Entity parentEntity, AttributeFormat format)
+                : this(groupName, parentEntity, format, false)
+            {
+
+            }
+
+            [JsonConstructor]
+            public BoolAttribute(string groupName, Entity parentEntity, AttributeFormat format, bool value)
                 : base(groupName, parentEntity, format)
             {
-                _value = false;
+                Value = value;
             }
 
             public override Control GetEditControl()
@@ -434,14 +498,14 @@ namespace RoleplayToolSet
                 CheckBox editControl = new CheckBox
                 {
                     Text = "",
-                    Checked = _value,
+                    Checked = Value,
                     Anchor = AnchorStyles.None
                 };
 
                 // Bind events
                 editControl.CheckedChanged += (object sender, EventArgs e) =>
                 {
-                    _value = editControl.Checked;
+                    Value = editControl.Checked;
                     InvokeValueChanged();
                 }; // Create a new lambda while everything is in scope
 
@@ -456,41 +520,44 @@ namespace RoleplayToolSet
 
             public override object GetListViewValue()
             {
-                return _value.ToString();
+                return Value.ToString();
             }
         }
 
         // ---------------------------------------------------------
         // -                Attribute definition                   -
         // ---------------------------------------------------------
-
-        private List<Attribute> _attributes;
         
-        [field: NonSerialized]
+        public List<Attribute> Attributes { get; private set; }
+        
         public event EntityAttributeEventHandler AttributeRemoved;
-
-        [field: NonSerialized]
+        
         public event EntityAttributeEventHandler AttributeAdded;
-
-        [field: NonSerialized]
+        
         public event EntityAttributeEventHandler AttributeValueChanged;
-
+        
         public Entity()
-        {
-            _attributes = new List<Attribute>();
+            : this(true) // All external entity creation must have default attributes
+        { }
 
-            // All entities must have a name to begin with
-            AddAttribute(new StringAttribute("Name", this, new AttributeFormat(deleteIfEmpty: false, deleteLocked: true, nameLocked: true), "New Entity"));
-        }
-
-        public List<Attribute> GetAttributes()
+        /// <summary>
+        /// Privately allows for an entity to be fuilt with or without default attributes
+        /// </summary>
+        /// <param name="useDefaultAttributes"></param>
+        private Entity(bool useDefaultAttributes)
         {
-            return _attributes;
+            Attributes = new List<Attribute>();
+
+            if (useDefaultAttributes)
+            {
+                // All entities must have a name to begin with
+                AddAttribute(new StringAttribute("Name", this, new AttributeFormat(deleteIfEmpty: false, deleteLocked: true, nameLocked: true), "New Entity"));
+            }
         }
 
         public void AddAttribute(Attribute attribute)
         {
-            _attributes.Add(attribute);
+            Attributes.Add(attribute);
 
             // Bind events
             attribute.ValueChanged += Attribute_ValueChanged;
@@ -511,7 +578,7 @@ namespace RoleplayToolSet
                 // Unbind events
                 attribute.ValueChanged -= Attribute_ValueChanged;
 
-                _attributes.Remove(attribute);
+                Attributes.Remove(attribute);
 
                 // Invoke events
                 AttributeRemoved?.Invoke(attribute, new EventArgs());
@@ -540,6 +607,152 @@ namespace RoleplayToolSet
                     return new BoolAttribute(groupName, entity, format);
             }
             return null;
+        }
+
+        /// <summary>
+        /// Generates a string representation of the entity
+        /// </summary>
+        /// <returns>A string representation of the file</returns>
+        public string GenerateStringRepresentation()
+        {
+            using (MemoryStream memoryStream = new MemoryStream())  // Stream to write the file data to
+            {
+                GenerateDataInStream(memoryStream);
+                return Encoding.UTF8.GetString(memoryStream.ToArray());
+            }
+        }
+
+        private const string FileIdentifier = "RoleplayToolSetEntityData";
+
+        /// <summary>
+        /// Generates a binary representation of this inside a stream
+        /// </summary>
+        /// <param name="stream">The stream to write this to</param>
+        private void GenerateDataInStream(Stream stream)
+        {
+            // Create a writer to write binary data to the passed stream
+            BinaryWriter writer = new BinaryWriter(stream);
+
+            // string -> file identifier
+            writer.Write(FileIdentifier);
+
+            // long -> encoder version number
+            writer.Write(1L);
+
+            // int -> number of attributes
+            writer.Write(Attributes.Count);
+
+            foreach (Attribute attr in Attributes)
+            {
+                // int -> Attribute type
+                writer.Write((int)attr.GetAttributeType());
+
+                // Serialise arrtibute
+                string jsonText = JsonConvert.SerializeObject(attr, new JsonSerializerSettings() { PreserveReferencesHandling=PreserveReferencesHandling.All });
+
+                // str -> Json data
+                writer.Write(jsonText);
+            }
+        }
+
+        /// <summary>
+        /// Saves the entity to a specified path
+        /// </summary>
+        /// <param name="path">The path to save to</param>
+        /// <exception cref="JsonSerializationException"></exception>
+        public void Save(string path)
+        {
+            using (FileStream file = new FileStream(path, FileMode.Create))
+            {
+                GenerateDataInStream(file);
+            }
+        }
+
+        /// <summary>
+        /// Generates an Entity from a stream
+        /// </summary>
+        /// <param name="stream">The stream to read from</param>
+        /// <exception cref="FormatException"></exception>
+        private static Entity GenerateEntityFromStream(Stream stream)
+        {
+            Entity entity = new Entity(false); // Build a new entity without default attributes
+
+            // Create a writer to write binary data to the passed stream
+            BinaryReader reader = new BinaryReader(stream);
+
+            // string -> file identifier
+            string identifier = reader.ReadString();
+            if (identifier != FileIdentifier)
+            {
+                throw new FormatException("Stream does not follow valid Entity data");
+            }
+
+            // long -> encoder version number
+            long version = reader.ReadInt64();
+            if (version == 1)
+            {
+                // int -> number of attributes
+                int attributeCount = reader.ReadInt32();
+
+                for (int attributeIndex = 0; attributeIndex < attributeCount; attributeIndex++)
+                {
+                    // int -> Attribute type
+                    AttributeType type = (AttributeType)reader.ReadInt32();
+
+                    // str -> Json data
+                    string jsonText = reader.ReadString();
+
+                    // Deserialise
+                    JsonSerializerSettings settings = new JsonSerializerSettings() { PreserveReferencesHandling = PreserveReferencesHandling.All };
+
+                    Attribute attribute;
+                    switch (type)
+                    {
+                        case AttributeType.Numeric:
+                            attribute = JsonConvert.DeserializeObject<NumericAttribute>(jsonText, settings);
+                            break;
+                        case AttributeType.String:
+                            attribute = JsonConvert.DeserializeObject<StringAttribute>(jsonText, settings);
+                            break;
+                        case AttributeType.Image:
+                            attribute = JsonConvert.DeserializeObject<ImageAttribute>(jsonText, settings);
+                            break;
+                        case AttributeType.Bool:
+                            attribute = JsonConvert.DeserializeObject<BoolAttribute>(jsonText, settings);
+                            break;
+                        default:
+                            throw new FormatException("Attribute type " + type + " not deserialisable");
+                    }
+                    entity.AddAttribute(attribute);
+                    attribute.ParentEntity = entity;
+                }
+            }
+            else
+            {
+                throw new FormatException("Entity version not recognised. Try updating RPTS?");
+            }
+
+            return entity;
+        }
+
+        /// <summary>
+        /// Loads an entity from a specific path
+        /// </summary>
+        /// <param name="path">The path to load from</param>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="PathTooLongException"></exception>
+        /// <exception cref="DirectoryNotFoundException"></exception>
+        /// <exception cref="FileNotFoundException"></exception>
+        /// <exception cref="NotSupportedException"></exception>
+        /// <exception cref="PathTooLongException"></exception>
+        /// <exception cref="JsonSerializationException"></exception>
+        /// <exception cref="FormatException"></exception>
+        public static Entity Load(string path)
+        {
+            using (FileStream file = new FileStream(path, FileMode.Open))
+            {
+                return GenerateEntityFromStream(file);
+            }
         }
     }
 }

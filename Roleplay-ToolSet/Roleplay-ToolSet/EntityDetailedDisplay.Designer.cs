@@ -111,8 +111,9 @@
             this.buttonSaveEntity.Name = "buttonSaveEntity";
             this.buttonSaveEntity.Size = new System.Drawing.Size(100, 27);
             this.buttonSaveEntity.TabIndex = 2;
-            this.buttonSaveEntity.Text = "Save Entity";
+            this.buttonSaveEntity.Text = "Export Entity";
             this.buttonSaveEntity.UseVisualStyleBackColor = true;
+            this.buttonSaveEntity.Click += new System.EventHandler(this.ButtonSaveEntity_Click);
             // 
             // buttonAddAttibute
             // 
@@ -134,8 +135,9 @@
             this.buttonLoadEntity.Name = "buttonLoadEntity";
             this.buttonLoadEntity.Size = new System.Drawing.Size(100, 27);
             this.buttonLoadEntity.TabIndex = 4;
-            this.buttonLoadEntity.Text = "Load Entity";
+            this.buttonLoadEntity.Text = "Import Entity";
             this.buttonLoadEntity.UseVisualStyleBackColor = true;
+            this.buttonLoadEntity.Click += new System.EventHandler(this.ButtonLoadEntity_Click);
             // 
             // EntityDetailedDisplay
             // 

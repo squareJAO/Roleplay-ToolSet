@@ -74,7 +74,7 @@ namespace RoleplayToolSet
             Entities.Add(entity);
 
             // Get and loop over attributes to find attribute groups and then increase their user count
-            List<Entity.Attribute> attributes = entity.GetAttributes();
+            List<Entity.Attribute> attributes = entity.Attributes;
             foreach (Entity.Attribute attribute in attributes)
             {
                 AddAttribute(entity, attribute);
@@ -101,7 +101,7 @@ namespace RoleplayToolSet
             entity.AttributeValueChanged -= Entity_AttributeValueChanged;
 
             // Get and loop over attributes to find attribute groups and then decrease their user count
-            List<Entity.Attribute> attributes = entity.GetAttributes();
+            List<Entity.Attribute> attributes = entity.Attributes;
             foreach (Entity.Attribute attribute in attributes)
             {
                 AttributeGroups[attribute.GroupName].Users.Remove(entity);
@@ -208,7 +208,7 @@ namespace RoleplayToolSet
             // Make a default attribute for each group
             foreach (string groupName in AttributeGroups.Keys)
             {
-                if (!entity.GetAttributes().Exists(attr => attr.GroupName == groupName))
+                if (!entity.Attributes.Exists(attr => attr.GroupName == groupName))
                 {
                     Entity.AttributeFormat format = AttributeGroups[groupName].Format;
 
@@ -250,7 +250,7 @@ namespace RoleplayToolSet
                 // Loop through all atributes and change their names
                 foreach (Entity entity in AttributeGroups[newName].Users)
                 {
-                    foreach (Entity.Attribute attribute in entity.GetAttributes())
+                    foreach (Entity.Attribute attribute in entity.Attributes)
                     {
                         if (attribute.GroupName == oldName)
                         {
@@ -273,7 +273,7 @@ namespace RoleplayToolSet
         {
             foreach (Entity entity in AttributeGroups[name].Users)
             {
-                foreach (Entity.Attribute attribute in entity.GetAttributes())
+                foreach (Entity.Attribute attribute in entity.Attributes)
                 {
                     if (attribute.GroupName == name)
                     {
