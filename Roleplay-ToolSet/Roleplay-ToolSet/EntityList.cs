@@ -10,6 +10,9 @@ namespace RoleplayToolSet
 {
     class EntityList : DataGridView
     {
+        private readonly Color InactiveColor = Color.Gray;
+        private readonly Color ActiveColor = Color.White;
+
         private EntityCollection _entityCollection;
         public EntityCollection Entities // Used to set entities above
         {
@@ -46,6 +49,7 @@ namespace RoleplayToolSet
         public EntityList()
         {
             this.ColumnHeaderMouseClick += EntityList_ColumnHeaderMouseClick;
+            this.DefaultCellStyle.BackColor = InactiveColor;
         }
 
         private void _entityCollection_EntityAdded(Entity entity, EventArgs eventArgs)
@@ -67,18 +71,6 @@ namespace RoleplayToolSet
         {
             this.UpdateAttribute(attr.ParentEntity, attr);
         }
-
-        // Changing occurs before it has been changed and changed occurs after
-        //private void _entityCollection_EntityAttributeFormatChanging(Entity.Attribute attr, EventArgs eventArgs)
-        //{
-        //    // Remove the attribute
-        //    RemoveAttribute(attr.ParentEntity, attr);
-        //}
-        //private void _entityCollection_EntityAttributeFormatChanged(Entity.Attribute attr, EventArgs eventArgs)
-        //{
-        //    // Re-add the attribute
-        //    AddAttribute(attr.ParentEntity, attr);
-        //}
 
         private void _entityCollection_AttributeGroupNameChanged(EntityCollection collection, AttributeGroupNameEventArgs eventArgs)
         {
@@ -197,7 +189,7 @@ namespace RoleplayToolSet
             {
                 // Remove data
                 DataGridViewColumn column = this.Columns[attribute.GroupName];
-                row.Cells[attribute.GroupName].Value = null;
+                SetCellValue(row.Cells[attribute.GroupName], null);
 
                 // Check if anything needs to go
                 CullUnusedColumns();
@@ -215,7 +207,7 @@ namespace RoleplayToolSet
             if (row != null && this.Columns.Contains(attribute.GroupName)) // Check that the entity is currently displayed
             {
                 // Update data
-                row.Cells[attribute.GroupName].Value = attribute.GetListViewValue();
+                SetCellValue(row.Cells[attribute.GroupName], attribute.GetListViewValue());
             }
         }
 
@@ -282,7 +274,7 @@ namespace RoleplayToolSet
             }
 
             // Add to cell
-            row.Cells[attribute.GroupName].Value = attribute.GetListViewValue();
+            SetCellValue(row.Cells[attribute.GroupName], attribute.GetListViewValue());
         }
 
         /// <summary>
@@ -338,8 +330,51 @@ namespace RoleplayToolSet
             {
                 string attrName = this.Columns[e.ColumnIndex].Name; // Get the name of the attribute
 
-                _entityCollection.ShowGroupContextMenu(attrName, this);
+                ShowGroupContextMenu(attrName);
             }
+        }
+
+        private void SetCellValue(DataGridViewCell cell, object data)
+        {
+            cell.Style.BackColor = data == null ? InactiveColor : ActiveColor;
+            cell.Value = data;
+        }
+
+        private void ShowGroupContextMenu(string attrName)
+        {
+            // Make a context menu
+            ContextMenu menu = new ContextMenu();
+            // Change name button
+            MenuItem itemChangeName = new MenuItem("Change Name", _entityCollection.ChangeNameFormEventGenerator(attrName))
+            {
+                Enabled = !_entityCollection.AttributeGroups[attrName].Format.NameLocked
+            };
+            menu.MenuItems.Add(itemChangeName);
+            // Delete button
+            MenuItem itemDelete = new MenuItem("Delete Group", (a, b) =>
+            {
+                if (MessageBox.Show($"Are you sure you want to delete {attrName} from all entities?", "Delete", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                {
+                    _entityCollection.DeleteGroup(attrName);
+                }
+            })
+            {
+                Enabled = !_entityCollection.AttributeGroups[attrName].Format.DeleteLocked
+            };
+            menu.MenuItems.Add(itemDelete);
+            // Delete if empty checkbox
+            MenuItem itemDeleteIfEmpty = new MenuItem("Keep If Empty", (a, b) =>
+            {
+                _entityCollection.ChangeAttributeGroupFormat(attrName,
+                    new Entity.AttributeFormat(_entityCollection.AttributeGroups[attrName].Format,
+                        deleteIfEmpty: !_entityCollection.AttributeGroups[attrName].Format.DeleteIfEmpty));
+            })
+            {
+                Checked = !_entityCollection.AttributeGroups[attrName].Format.DeleteIfEmpty,
+                Enabled = !_entityCollection.AttributeGroups[attrName].Format.DeleteLocked
+            };
+            menu.MenuItems.Add(itemDeleteIfEmpty);
+            menu.Show(this, this.PointToClient(Cursor.Position));
         }
     }
 }

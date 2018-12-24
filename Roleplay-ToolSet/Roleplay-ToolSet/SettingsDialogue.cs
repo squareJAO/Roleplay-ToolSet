@@ -8,7 +8,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 using System.Windows.Forms;
-using Newtonsoft.Json;
+using NodaTime;
+using System.Globalization;
 
 namespace RoleplayToolSet
 {
@@ -36,6 +37,14 @@ namespace RoleplayToolSet
 
             // Initilise time formats
             textBoxTimeFormat.Text = _settings.DateFormat.Value;
+
+            // Initilise time interval
+            numericUpDownTimeInterval.Value = _settings.RealTimeInterval.Value;
+
+            // Initialise calendars
+            string[] systems = CalendarSystem.Ids.ToArray();
+            comboBoxCalendar.Items.AddRange(systems);
+            comboBoxCalendar.SelectedIndex = Array.IndexOf(systems, _settings.Calendar.Value.Id);
         }
 
         /// <summary>
@@ -49,6 +58,12 @@ namespace RoleplayToolSet
 
             // Process time formats
             _settings.DateFormat.Value = textBoxTimeFormat.Text;
+
+            // Process time interval
+            _settings.RealTimeInterval.Value = (int)numericUpDownTimeInterval.Value;
+
+            // Process calendars
+            _settings.Calendar.Value = CalendarSystem.ForId(comboBoxCalendar.SelectedItem.ToString());
         }
 
         private void ButtonSave_Click(object sender, EventArgs e)

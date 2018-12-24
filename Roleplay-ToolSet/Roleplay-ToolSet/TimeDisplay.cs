@@ -53,6 +53,7 @@ namespace RoleplayToolSet
             // Add events
             worldTime.TimeChanged += WorldTime_TimeChanged;
             settings.DateFormat.Changed += DateFormat_Changed;
+            settings.Calendar.Changed += Calendar_Changed;
 
             this.ResumeLayout();    
         }
@@ -70,6 +71,11 @@ namespace RoleplayToolSet
         }
 
         private void DateFormat_Changed(object sender, EventArgs e)
+        {
+            UpdateTime();
+        }
+
+        private void Calendar_Changed(object sender, EventArgs e)
         {
             UpdateTime();
         }

@@ -21,18 +21,19 @@ namespace RoleplayToolSet
         private class AttributeViewer : Panel
         {
             private Entity.Attribute _attribute;
-
-            public event AttributeEventHandler AttributeRemoved;
-            public event AttributeEventHandler AttributeAdded;
+            private EntityCollection _entityCollection;
+            private bool _exists;
 
             /// <summary>
             /// Creates a viewer for an attribute that allow for data to be changed and the attribute to be added/removed
             /// </summary>
             /// <param name="attribute">The attribute to display</param>
             /// <param name="exists">Whether the attribute already belongs to the entity or if it is a possible attribute</param>
-            public AttributeViewer(Entity.Attribute attribute, bool exists) // Takes a parameter because it's private and I'm a rule breaker >:)
+            public AttributeViewer(Entity.Attribute attribute, bool exists, EntityCollection collection) // Takes parameters because it's private and I'm a rule breaker
             {
                 _attribute = attribute;
+                _entityCollection = collection;
+                _exists = exists;
 
                 // Format this
                 this.Size = new Size(200, 200);
@@ -45,6 +46,13 @@ namespace RoleplayToolSet
                     Location = new Point(0, 0),
                     Size = new Size(200, 20),
                     Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top
+                };
+                name.MouseClick += (object o, MouseEventArgs e) =>
+                {
+                    if (e.Button == MouseButtons.Right)
+                    {
+                        ShowGroupContextMenu();
+                    }
                 };
                 Controls.Add(name);
 
@@ -88,16 +96,69 @@ namespace RoleplayToolSet
                 }
             }
 
+            private void ShowGroupContextMenu()
+            {
+                // Make a context menu
+                ContextMenu menu = new ContextMenu();
+                // Change name button
+                MenuItem itemChangeName = new MenuItem("Change Name", _entityCollection.ChangeNameFormEventGenerator(_attribute.GroupName))
+                {
+                    Enabled = !_entityCollection.AttributeGroups[_attribute.GroupName].Format.NameLocked
+                };
+                menu.MenuItems.Add(itemChangeName);
+
+                if (_exists)
+                {
+                    // Delete button
+                    MenuItem itemDelete = new MenuItem("Delete", (a, b) =>
+                    {
+                        ShowRemoveDialogue();
+                    })
+                    {
+                        Enabled = !_entityCollection.AttributeGroups[_attribute.GroupName].Format.DeleteLocked
+                    };
+                    menu.MenuItems.Add(itemDelete);
+                }
+                else
+                {
+                    // Add button
+                    MenuItem itemAdd = new MenuItem("Add", (a, b) =>
+                    {
+                        AddAttribute();
+                    });
+                    menu.MenuItems.Add(itemAdd);
+                }
+
+                menu.Show(this, this.PointToClient(Cursor.Position));
+            }
+
             private void Add_Click(object sender, EventArgs e)
             {
-                AttributeAdded?.Invoke(_attribute, new EventArgs());
+                AddAttribute();
+            }
+
+            private void AddAttribute()
+            {
+                if (!_exists)
+                {
+                    _attribute.ParentEntity.AddAttribute(_attribute);
+                }
+                else
+                {
+                    throw new ArgumentOutOfRangeException("Can't add an attribute that has already been added");
+                }
             }
 
             private void Remove_Click(object sender, EventArgs e)
             {
+                ShowRemoveDialogue();
+            }
+
+            private void ShowRemoveDialogue()
+            {
                 if (MessageBox.Show("Are you sure you want to remove this attribute?", "Remove", MessageBoxButtons.YesNo) == DialogResult.Yes) // Check that the user ment to click remove
                 {
-                    AttributeRemoved?.Invoke(_attribute, new EventArgs());
+                    _attribute.ParentEntity.RemoveAttribute(_attribute);
                 }
             }
         }
@@ -206,14 +267,11 @@ namespace RoleplayToolSet
                 foreach (Entity.Attribute attribute in _entity.Attributes)
                 {
                     // Make & format viewer
-                    AttributeViewer attributeViewer = new AttributeViewer(attribute, true)
+                    AttributeViewer attributeViewer = new AttributeViewer(attribute, true, _entityCollection)
                     {
                         Size = new Size(200, 150)
                     };
                     this.flowLayoutPanelAttributes.Controls.Add(attributeViewer);
-
-                    // Bind events
-                    attributeViewer.AttributeRemoved += AttributeViewer_AttributeRemoved;
                 }
 
                 List<Entity.Attribute> unassignedAttributes = _entityCollection.GetUnassignedAttributes(_entity);
@@ -234,15 +292,12 @@ namespace RoleplayToolSet
                 foreach (Entity.Attribute attribute in _entityCollection.GetUnassignedAttributes(_entity))
                 {
                     // Make & format viewer
-                    AttributeViewer attributeViewer = new AttributeViewer(attribute, false)
+                    AttributeViewer attributeViewer = new AttributeViewer(attribute, false, _entityCollection)
                     {
                         Size = new Size(200, 150),
                         BackColor = Color.LightGray
                     };
                     this.flowLayoutPanelAttributes.Controls.Add(attributeViewer);
-
-                    // Bind events
-                    attributeViewer.AttributeAdded += AttributeViewer_AttributeAdded;
                 }
             }
 
@@ -324,36 +379,36 @@ namespace RoleplayToolSet
             fileDialog.ShowDialog();
             if (fileDialog.FileName != "")
             {
-                //try
-                //{
+                try
+                {
                     Entity entity = Entity.Load(fileDialog.FileName);
                     _entityCollection.AddEntity(entity);
-                //}
-                //    catch (Exception exception)
-                //    {
-                //        string message;
+                }
+                catch (Exception exception)
+                {
+                    string message;
 
-                //        if (exception is UnauthorizedAccessException ||
-                //            exception is PathTooLongException ||
-                //            exception is DirectoryNotFoundException ||
-                //            exception is FileNotFoundException)
-                //        {
-                //            message = "An error was encountered when trying to open the file: ";
-                //        }
-                //        else if (exception is JsonSerializationException ||
-                //                 exception is JsonReaderException ||
-                //                 exception is FormatException)
-                //        {
-                //            message = "An error was encountered when trying to deserialise the entity: ";
-                //        }
-                //        else
-                //        {
-                //            throw exception;
-                //        }
+                    if (exception is UnauthorizedAccessException ||
+                        exception is PathTooLongException ||
+                        exception is DirectoryNotFoundException ||
+                        exception is FileNotFoundException)
+                    {
+                        message = "An error was encountered when trying to open the file: ";
+                    }
+                    else if (exception is JsonSerializationException ||
+                             exception is JsonReaderException ||
+                             exception is FormatException)
+                    {
+                        message = "An error was encountered when trying to deserialise the entity: ";
+                    }
+                    else
+                    {
+                        throw exception;
+                    }
 
-                //        message += exception.Message;
-                //        MessageBox.Show(message, "Import error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                //    }
+                    message += exception.Message;
+                    MessageBox.Show(message, "Import error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
         }
     }

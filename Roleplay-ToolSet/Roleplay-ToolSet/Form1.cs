@@ -47,6 +47,7 @@ namespace RoleplayToolSet
             _settings.ImageStyle.Changed += _settings_ImageStyleChanged;
             _settings.DateFormat.Changed += DateFormat_Changed;
             _settings.RealTimeInterval.Changed += RealTimeInterval_Changed;
+            _settings.Calendar.Changed += Calendar_Changed;
             timeInputBox.TimeChanged += TimeInputBox_TimeChanged;
         }
 
@@ -123,6 +124,12 @@ namespace RoleplayToolSet
         private void _settings_ImageStyleChanged(object sender, EventArgs e)
         {
             _playerForm.BackgroundImageLayout = _settings.ImageStyle.Value;
+        }
+
+        private void Calendar_Changed(object sender, EventArgs e)
+        {
+            _time.ChangeCalendar(_settings.Calendar.Value);
+            RefreshTimeLabel();
         }
 
         private void PlayerForm_Closed(object sender, EventArgs e)

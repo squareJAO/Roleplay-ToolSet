@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using NodaTime;
 
 namespace RoleplayToolSet
@@ -26,8 +27,20 @@ namespace RoleplayToolSet
 
         public void Add(Period period)
         {
-            _time = _time.Plus(period);
-            TimeChanged?.Invoke(this, new EventArgs());
+            try
+            {
+                _time = _time.Plus(period);
+                TimeChanged?.Invoke(this, new EventArgs());
+            }
+            catch (IndexOutOfRangeException)
+            {
+                string message = "Time out of range";
+                if (_time.Calendar != CalendarSystem.Iso)
+                {
+                    message += ". Try changing calendar to ISO to fix";
+                }
+                MessageBox.Show(message, "Time error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
         
         public void AddTicks(long value)
@@ -87,6 +100,14 @@ namespace RoleplayToolSet
         public double GetPercentThroughDay()
         {
             return (double)_time.TimeOfDay.NanosecondOfDay / LocalTime.MaxValue.NanosecondOfDay;
+        }
+
+        public void ChangeCalendar(CalendarSystem calendar)
+        {
+            if (calendar != _time.Calendar)
+            {
+                _time = new LocalDateTime(_time.Year, _time.Month, _time.Day, _time.Hour, _time.Minute, _time.Second, _time.Millisecond, calendar);
+            }
         }
 
         public override string ToString()

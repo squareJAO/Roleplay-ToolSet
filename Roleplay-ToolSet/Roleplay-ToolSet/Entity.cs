@@ -199,18 +199,8 @@ namespace RoleplayToolSet
                 };
                 editControl.Controls.Add(numberBox);
 
-                // Make & Add change button
-                Button changeButton = new Button
-                {
-                    Text = "Change",
-                    Size = new Size(100, 20),
-                    Location = new Point(0, 60),
-                    Anchor = AnchorStyles.Right | AnchorStyles.Left | AnchorStyles.Bottom
-                };
-                editControl.Controls.Add(changeButton);
-
                 // Bind events
-                changeButton.Click += (object sender, EventArgs e) =>
+                numberBox.ValueChanged += (object sender, EventArgs e) =>
                 {
                     Number = numberBox.Value;
                     InvokeValueChanged();
@@ -305,29 +295,24 @@ namespace RoleplayToolSet
                 RichTextBox textBox = new RichTextBox
                 {
                     Anchor = AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Top | AnchorStyles.Right,
-                    Size = new Size(100, 80)
+                    Size = new Size(100, 100),
+                    WordWrap = true
                 };
                 textBox.Rtf = Value.RTF;
                 textBox.BorderStyle = BorderStyle.None;
-                textBox.ScrollBars = RichTextBoxScrollBars.None;
+                textBox.ScrollBars = RichTextBoxScrollBars.Vertical;
                 editControl.Controls.Add(textBox);
 
-                // Make & Add change button
-                Button changeButton = new Button
-                {
-                    Text = "Change",
-                    Anchor = AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Right,
-                    Size = new Size(100, 20),
-                    Location = new Point(0, 80)
-                };
-                editControl.Controls.Add(changeButton);
-
                 // Bind events
-                changeButton.Click += (object sender, EventArgs e) =>
+                void changeHandler(object sender, EventArgs e)
                 {
                     Value.SetString(textBox.Rtf);
                     InvokeValueChanged();
-                }; // Create a new lambda while everything is in scope
+                } // Create a new function while everything is in scope
+                // Bind function
+                textBox.LostFocus += changeHandler;
+                textBox.Leave += changeHandler;
+
                 // Add some nice formatting for text box
                 textBox.KeyDown += (object sender, KeyEventArgs e) =>
                 {
@@ -352,6 +337,10 @@ namespace RoleplayToolSet
                                 e.SuppressKeyPress = true;
                                 break;
                         }
+                    }
+                    if (!e.Shift && e.KeyCode == Keys.Enter)
+                    {
+                        changeHandler(null, null);
                     }
                 };
 
@@ -569,6 +558,18 @@ namespace RoleplayToolSet
         private void Attribute_ValueChanged(Attribute attribute, EventArgs e)
         {
             AttributeValueChanged?.Invoke(attribute, new EventArgs());
+        }
+
+        public void RemoveAttribute(string attributeName)
+        {
+            foreach (Attribute attribute in Attributes)
+            {
+                if (attribute.GroupName == attributeName)
+                {
+                    RemoveAttribute(attribute);
+                    return;
+                }
+            }
         }
 
         public void RemoveAttribute(Attribute attribute)

@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Windows.Forms;
 using Newtonsoft.Json;
+using NodaTime;
+using System.Globalization;
 
 namespace RoleplayToolSet
 {
@@ -45,6 +47,7 @@ namespace RoleplayToolSet
         public Setting<ImageLayout> ImageStyle = new Setting<ImageLayout>();
         public Setting<string> DateFormat = new Setting<string>();
         public Setting<int> RealTimeInterval = new Setting<int>();
+        public Setting<CalendarSystem> Calendar = new Setting<CalendarSystem>();
 
         public Settings()
         {
@@ -57,6 +60,7 @@ namespace RoleplayToolSet
             ImageStyle.Value = ImageLayout.Stretch;
             DateFormat.Value = "dd MMM yyyy g HH:mm:ss tt";
             RealTimeInterval.Value = 1000;
+            Calendar.Value = CalendarSystem.Iso;
         }
 
         /// <summary>

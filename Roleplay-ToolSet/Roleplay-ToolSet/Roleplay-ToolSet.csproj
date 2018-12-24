@@ -6,8 +6,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{EB2AEEA9-501C-4902-8C1E-BED43C2EA6EC}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <RootNamespace>DandDGUI</RootNamespace>
-    <AssemblyName>DandDGUI</AssemblyName>
+    <RootNamespace>RoleplayToolSet</RootNamespace>
+    <AssemblyName>Roleplay-ToolSet</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -93,6 +93,9 @@
     <Compile Include="SettingsDialogue.Designer.cs">
       <DependentUpon>SettingsDialogue.cs</DependentUpon>
     </Compile>
+    <Compile Include="TextInputBox.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="TimeDisplay.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -118,6 +121,7 @@
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
     </Compile>
     <EmbeddedResource Include="SettingsDialogue.resx">
       <DependentUpon>SettingsDialogue.cs</DependentUpon>

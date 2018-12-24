@@ -189,11 +189,28 @@ namespace RoleplayToolSet
                 string columnName = AttributeGroups.Keys.ElementAt(columnNameIndex);
                 if (AttributeGroups[columnName].Users.Count == 0 && AttributeGroups[columnName].Format.DeleteIfEmpty) // No users => no elements that use this attribute
                 {
-                    AttributeGroups.Remove(columnName);
-
-                    AttributeGroupRemoved?.Invoke(this, new AttributeGroupEventArgs(columnName));
+                    DeleteGroup(columnName);
                 }
             }
+        }
+
+        /// <summary>
+        /// Deletes an attribute group
+        /// </summary>
+        /// <param name="groupName">The group to delete</param>
+        public void DeleteGroup(string groupName)
+        {
+            // Remove all attribute users
+            for (int i = AttributeGroups[groupName].Users.Count - 1; i >= 0; i--)
+            {
+                AttributeGroups[groupName].Users[i].RemoveAttribute(groupName);
+            }
+
+            // Remove data
+            AttributeGroups.Remove(groupName);
+
+            // Invoke
+            AttributeGroupRemoved?.Invoke(this, new AttributeGroupEventArgs(groupName));
         }
 
         /// <summary>
@@ -231,15 +248,15 @@ namespace RoleplayToolSet
             { } 
             else if (AttributeGroups.ContainsKey(newName)) // Otherwise if the given name is already in the dict something else is called that
             {
-                MessageBox.Show(newName + " is already an attribute group");
+                MessageBox.Show($"{newName} is already an attribute group", "Name error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             else if (!AttributeGroups.ContainsKey(oldName)) // Otherwise if the oldName isn't in the groups something went wrong
             {
-                MessageBox.Show("Could not find group " + oldName, "This shouldn't happen, please alert someone", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Could not find group {oldName}. This shouldn't happen, please alert someone", "Name error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             else if (AttributeGroups[oldName].Format.NameLocked) // Otherwise if the name is locked then don't allow it to be changed
             {
-                MessageBox.Show(oldName + " has its name locked");
+                MessageBox.Show($"{oldName} has its name locked");
             }
             else // Otherwise change the name
             {
@@ -291,80 +308,21 @@ namespace RoleplayToolSet
             AttributeGroupFormatChanged?.Invoke(this, new AttributeGroupEventArgs(name));
         }
 
-        public void ShowGroupContextMenu(string attrName, Control control)
-        {
-            // Make a context menu
-            ContextMenu menu = new ContextMenu();
-            // Change name button
-            MenuItem itemChangeName = new MenuItem("Change Name", ChangeNameGenerator(attrName))
-            {
-                Enabled = !AttributeGroups[attrName].Format.NameLocked
-            };
-            menu.MenuItems.Add(itemChangeName);
-            // Delete if empty checkbox
-            MenuItem itemDeleteIfEmpty = new MenuItem("Delete If Empty", (a, b) =>
-            {
-                ChangeAttributeGroupFormat(attrName,
-                    new Entity.AttributeFormat(AttributeGroups[attrName].Format,
-                        deleteIfEmpty: !AttributeGroups[attrName].Format.DeleteIfEmpty));
-            })
-            {
-                Checked = AttributeGroups[attrName].Format.DeleteIfEmpty,
-                Enabled = !AttributeGroups[attrName].Format.DeleteLocked
-            };
-            menu.MenuItems.Add(itemDeleteIfEmpty);
-            menu.Show(control, control.PointToClient(Cursor.Position));
-        }
-
         /// <summary>
         /// Generates a handler to generate a form to input a new attribute group name in
         /// </summary>
         /// <param name="current">The current name of the attribute</param>
         /// <returns>A handler to create a form</returns>
-        private EventHandler ChangeNameGenerator(string current)
+        public EventHandler ChangeNameFormEventGenerator(string current)
         {
             void ChangeName(object sender, EventArgs e)
             {
-                Form form = new Form();
-                Label label = new Label();
-                TextBox textBox = new TextBox();
-                Button buttonOk = new Button();
-                Button buttonCancel = new Button();
-
-                form.Text = "Attribute Name";
-                label.Text = "Enter new name";
-                textBox.Text = current;
-
-                buttonOk.Text = "OK";
-                buttonCancel.Text = "Cancel";
-                buttonOk.DialogResult = DialogResult.OK;
-                buttonCancel.DialogResult = DialogResult.Cancel;
-
-                label.SetBounds(9, 20, 372, 13);
-                textBox.SetBounds(12, 36, 372, 20);
-                buttonOk.SetBounds(228, 72, 75, 23);
-                buttonCancel.SetBounds(309, 72, 75, 23);
-
-                label.AutoSize = true;
-                textBox.Anchor = textBox.Anchor | AnchorStyles.Right;
-                buttonOk.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-                buttonCancel.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-
-                form.ClientSize = new Size(396, 107);
-                form.Controls.AddRange(new Control[] { label, textBox, buttonOk, buttonCancel });
-                form.ClientSize = new Size(Math.Max(300, label.Right + 10), form.ClientSize.Height);
-                form.FormBorderStyle = FormBorderStyle.FixedDialog;
-                form.StartPosition = FormStartPosition.CenterScreen;
-                form.MinimizeBox = false;
-                form.MaximizeBox = false;
-                form.AcceptButton = buttonOk;
-                form.CancelButton = buttonCancel;
-
+                TextInputBox form = new TextInputBox("Change Attribute Name", "New Name:", current);
                 DialogResult dialogResult = form.ShowDialog();
 
                 if (dialogResult == DialogResult.OK)
                 {
-                    ChangeAttributeGroupName(current, textBox.Text);
+                    ChangeAttributeGroupName(current, form.GetInputtedText());
                 }
             }
 
