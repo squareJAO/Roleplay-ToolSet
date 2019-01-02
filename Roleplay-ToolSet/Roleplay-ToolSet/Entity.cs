@@ -7,6 +7,7 @@ using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using Newtonsoft.Json;
+using System.Text.RegularExpressions;
 
 namespace RoleplayToolSet
 {
@@ -57,12 +58,13 @@ namespace RoleplayToolSet
             Numeric,
             String,
             Image,
-            Bool
+            Bool,
+            Formula
         }
         /// <summary>
         /// The format that the attribute takes
         /// </summary>
-        [Serializable]
+        [JsonObject(IsReference = true)]
         public class AttributeFormat
         {
             // This means something different to each attribute
@@ -98,13 +100,14 @@ namespace RoleplayToolSet
         /// <summary>
         /// An item in the entity such as health, image, etc
         /// </summary>
-        [Serializable]
+        [JsonObject(IsReference = true)]
         public abstract class Attribute
         {
+            [JsonProperty("format")]
             public AttributeFormat Format { get; private set; }
+            [JsonProperty("groupName")]
             public string GroupName { get; private set; }
-
-            [JsonIgnore]
+            [JsonProperty("parentEntity")]
             public Entity ParentEntity { get; internal set; }
 
             public event AttributeEventHandler ValueChanged;
@@ -117,16 +120,16 @@ namespace RoleplayToolSet
 
             public Attribute(string groupName, Entity parentEntity, AttributeFormat format)
             {
-                GroupName = groupName;
-                ParentEntity = parentEntity;
+                GroupName = groupName ?? throw new ArgumentNullException();
+                ParentEntity = parentEntity ?? throw new ArgumentNullException();
                 ChangeFormat(format);
             }
 
             public void ChangeFormat(AttributeFormat format)
             {
-                if (Format == null || (format != null && format.DeleteLocked == Format.DeleteLocked)) // Absolutely disallow this from changing
+                if (Format is null || (format.DeleteLocked == Format.DeleteLocked && format.NameLocked == Format.NameLocked)) // Absolutely disallow this from changing
                 {
-                    Format = format;
+                    Format = format ?? throw new ArgumentNullException();
                 }
             }
 
@@ -159,7 +162,7 @@ namespace RoleplayToolSet
             }
         }
 
-        [Serializable]
+        [JsonObject(IsReference = true)]
         public class NumericAttribute : Attribute
         {
             public decimal Number { get; private set; }
@@ -221,10 +224,10 @@ namespace RoleplayToolSet
             }
         }
 
-        [Serializable]
+        [JsonObject(IsReference = true)]
         public class StringAttribute : Attribute
         {
-            [Serializable]
+            [JsonObject]
             public class RTFString
             {
                 public string RTF { get; private set; }
@@ -359,7 +362,7 @@ namespace RoleplayToolSet
             }
         }
 
-        [Serializable]
+        [JsonObject(IsReference = true)]
         public class ImageAttribute : Attribute
         {
             /// <summary>
@@ -463,7 +466,7 @@ namespace RoleplayToolSet
             }
         }
 
-        [Serializable]
+        [JsonObject(IsReference = true)]
         public class BoolAttribute : Attribute
         {
             public bool Value { get; private set; }
@@ -510,6 +513,107 @@ namespace RoleplayToolSet
             public override object GetListViewValue()
             {
                 return Value.ToString();
+            }
+        }
+
+        [JsonObject(IsReference = true)]
+        public class FormulaAttribute : Attribute
+        {
+            public Expression Formula { get; private set; }
+
+            [JsonIgnore]
+            private string _result; // The result of the last time the formula was executed
+
+            public FormulaAttribute(string groupName, Entity parentEntity, AttributeFormat format)
+                : this(groupName, parentEntity, format, new Expression(""))
+            {
+
+            }
+
+            [JsonConstructor]
+            public FormulaAttribute(string groupName, Entity parentEntity, AttributeFormat format, Expression formla)
+                : base(groupName, parentEntity, format)
+            {
+                Formula = formla ?? throw new ArgumentNullException();
+
+                // Bind events
+                parentEntity.AttributeAdded += ParentEntity_AttributeAdded;
+                parentEntity.AttributeRemoved += ParentEntity_AttributeRemoved;
+                parentEntity.AttributeValueChanged += ParentEntity_AttributeValueChanged;
+            }
+
+            private void ParentEntity_AttributeAdded(Attribute attribute, EventArgs eventArgs)
+            {
+                ExecuteFormula();
+                InvokeValueChanged();
+            }
+
+            private void ParentEntity_AttributeValueChanged(Attribute attribute, EventArgs eventArgs)
+            {
+                if (attribute != this && Formula.References.Contains(attribute))
+                {
+                    // If another attribute has its values changed, execute the formula again
+                    ExecuteFormula();
+                    InvokeValueChanged();
+                }
+            }
+
+            private void ParentEntity_AttributeRemoved(Attribute attribute, EventArgs eventArgs)
+            {
+                if (attribute != this && Formula.References.Contains(attribute))
+                {
+                    ExecuteFormula();
+                    InvokeValueChanged();
+                }
+            }
+
+            public override Control GetEditControl()
+            {
+                // Make & format base control (Panel)
+                Panel editControl = new Panel
+                {
+                    Size = new Size(100, 100)
+                };
+
+                // Make & Add text box
+                RichTextBox textBox = new RichTextBox
+                {
+                    Anchor = AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Top | AnchorStyles.Right,
+                    Size = new Size(100, 100),
+                    WordWrap = true
+                };
+                textBox.Text = Formula.Formula;
+                textBox.BorderStyle = BorderStyle.None;
+                textBox.ScrollBars = RichTextBoxScrollBars.Vertical;
+                editControl.Controls.Add(textBox);
+
+                // Bind events
+                void changeHandler(object sender, EventArgs e)
+                {
+                    Formula = new Expression(textBox.Text);
+                    ExecuteFormula();
+                    InvokeValueChanged();
+                } // Create a new function while everything is in scope
+                textBox.LostFocus += changeHandler;
+                textBox.Leave += changeHandler;
+
+                // Return
+                return editControl;
+            }
+
+            public override AttributeType GetAttributeType()
+            {
+                return AttributeType.Formula;
+            }
+
+            public override object GetListViewValue()
+            {
+                return _result;
+            }
+
+            private void ExecuteFormula()
+            {
+                _result = Formula.RunOnEntity(ParentEntity, this);
             }
         }
 
@@ -627,6 +731,8 @@ namespace RoleplayToolSet
                     return new ImageAttribute(groupName, entity, format);
                 case AttributeType.Bool:
                     return new BoolAttribute(groupName, entity, format);
+                case AttributeType.Formula:
+                    return new FormulaAttribute(groupName, entity, format);
             }
             return null;
         }

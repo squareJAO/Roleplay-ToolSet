@@ -260,12 +260,6 @@ namespace RoleplayToolSet
                 // Make new column
                 switch (attribute.GetAttributeType())
                 {
-                    case Entity.AttributeType.Numeric:
-                        column = new DataGridViewTextBoxColumn();
-                        break;
-                    case Entity.AttributeType.String:
-                        column = new DataGridViewTextBoxColumn();
-                        break;
                     case Entity.AttributeType.Image:
                         column = new DataGridViewImageColumn()
                         {
@@ -274,10 +268,8 @@ namespace RoleplayToolSet
                         };
                         column.DefaultCellStyle.NullValue = null; // No weird icon if no image
                         break;
-                    case Entity.AttributeType.Bool:
-                        column = new DataGridViewTextBoxColumn();
-                        break;
                     default:
+                        column = new DataGridViewTextBoxColumn();
                         break;
                 }
                 // Add column to end
