@@ -10,6 +10,7 @@ namespace RoleplayToolSet
 {
     class EntityList : DataGridView
     {
+        // Colours of the cells when they do/don't have data in them
         private readonly Color InactiveColor = Color.Gray;
         private readonly Color ActiveColor = Color.White;
 
@@ -27,7 +28,11 @@ namespace RoleplayToolSet
                     _entityCollection.EntityAttributeRemoved -= _entityCollection_EntityAttributeRemoved;
                     _entityCollection.EntityRemoved -= _entityCollection_EntityRemoved;
                     _entityCollection.AttributeGroupRemoved -= _entityCollection_AttributeGroupRemoved;
-                    _entityCollection.AttributeGroupNameChanged += _entityCollection_AttributeGroupNameChanged;
+                    _entityCollection.AttributeGroupNameChanged -= _entityCollection_AttributeGroupNameChanged;
+
+                    // Delete all rows & columns
+                    this.RowCount = 0;
+                    this.ColumnCount = 0;
                 }
 
                 _entityCollection = value;
@@ -42,14 +47,23 @@ namespace RoleplayToolSet
                     _entityCollection.EntityRemoved += _entityCollection_EntityRemoved;
                     _entityCollection.AttributeGroupRemoved += _entityCollection_AttributeGroupRemoved;
                     _entityCollection.AttributeGroupNameChanged += _entityCollection_AttributeGroupNameChanged;
+
+                    // Refresh entities
+                    foreach (Entity entity in _entityCollection.Entities)
+                    {
+                        AddEntity(entity);
+                    }
                 }
             }
         }
 
         public EntityList()
         {
-            this.ColumnHeaderMouseClick += EntityList_ColumnHeaderMouseClick;
+            // Set default style
             this.DefaultCellStyle.BackColor = InactiveColor;
+
+            // Add events
+            this.ColumnHeaderMouseClick += EntityList_ColumnHeaderMouseClick;
         }
 
         private void _entityCollection_EntityAdded(Entity entity, EventArgs eventArgs)
@@ -291,6 +305,20 @@ namespace RoleplayToolSet
         }
 
         /// <summary>
+        /// Gets the entities that are currrently selected
+        /// </summary>
+        /// <returns>The entities that are currently selected, or an empty array. Never null</returns>
+        public Entity[] GetSelectedEntities()
+        {
+            Entity[] entities = new Entity[SelectedRows.Count];
+            for (int i = 0; i < SelectedRows.Count; i++)
+            {
+                entities[i] = GetRowEntity(SelectedRows[i]);
+            }
+            return entities;
+        }
+
+        /// <summary>
         /// Remove all columns that have no cells with data in them
         /// </summary>
         public void CullUnusedColumns()
@@ -344,12 +372,14 @@ namespace RoleplayToolSet
         {
             // Make a context menu
             ContextMenu menu = new ContextMenu();
+
             // Change name button
             MenuItem itemChangeName = new MenuItem("Change Name", _entityCollection.ChangeNameFormEventGenerator(attrName))
             {
                 Enabled = !_entityCollection.AttributeGroups[attrName].Format.NameLocked
             };
             menu.MenuItems.Add(itemChangeName);
+
             // Delete button
             MenuItem itemDelete = new MenuItem("Delete Group", (a, b) =>
             {
@@ -362,6 +392,7 @@ namespace RoleplayToolSet
                 Enabled = !_entityCollection.AttributeGroups[attrName].Format.DeleteLocked
             };
             menu.MenuItems.Add(itemDelete);
+
             // Delete if empty checkbox
             MenuItem itemDeleteIfEmpty = new MenuItem("Keep If Empty", (a, b) =>
             {
@@ -374,6 +405,8 @@ namespace RoleplayToolSet
                 Enabled = !_entityCollection.AttributeGroups[attrName].Format.DeleteLocked
             };
             menu.MenuItems.Add(itemDeleteIfEmpty);
+
+            // Show
             menu.Show(this, this.PointToClient(Cursor.Position));
         }
     }

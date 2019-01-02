@@ -27,7 +27,7 @@ namespace RoleplayToolSet
         private int _borderWidth;
         private int _titlebarHeight;
 
-        public FormPlayerOverlay(WorldTime time, Settings settings)
+        public FormPlayerOverlay(Adventure adventure, Settings settings)
         {
             InitializeComponent();
 
@@ -53,7 +53,7 @@ namespace RoleplayToolSet
             _table.BackColor = Color.Transparent;
 
             // Format time display
-            _timeDisplay = new TimeDisplay(time, settings);
+            _timeDisplay = new TimeDisplay(adventure.Time, settings);
             _table.Controls.Add(_timeDisplay);
             _timeDisplay.Dock = DockStyle.Fill;
 

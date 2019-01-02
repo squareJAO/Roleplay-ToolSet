@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Drawing;
+using Newtonsoft.Json;
 
 namespace RoleplayToolSet
 {
@@ -32,41 +33,59 @@ namespace RoleplayToolSet
 
     public delegate void AttributeGroupNameEventHandler(EntityCollection collection, AttributeGroupNameEventArgs eventArgs);
 
-    [Serializable]
+    [JsonObject]
     public class EntityCollection
     {
+        [JsonProperty("entities")]
         public List<Entity> Entities { get; private set; }
 
-        [field: NonSerialized]
+        [field: JsonIgnore]
         public event EntityEventHandler EntityAdded;
 
-        [field: NonSerialized]
+        [field: JsonIgnore]
         public event EntityEventHandler EntityRemoved;
 
-        [field: NonSerialized]
+        [field: JsonIgnore]
         public event EntityAttributeEventHandler EntityAttributeAdded;
 
-        [field: NonSerialized]
+        [field: JsonIgnore]
         public event EntityAttributeEventHandler EntityAttributeRemoved;
 
-        [field: NonSerialized]
+        [field: JsonIgnore]
         public event EntityAttributeEventHandler EntityAttributeValueChanged;
 
-        [field: NonSerialized]
+        [field: JsonIgnore]
         public event AttributeGroupEventHandler AttributeGroupFormatChanged;
 
-        [field: NonSerialized]
+        [field: JsonIgnore]
         public event AttributeGroupNameEventHandler AttributeGroupNameChanged;
 
-        [field: NonSerialized]
+        [field: JsonIgnore]
         public event AttributeGroupEventHandler AttributeGroupRemoved;
 
+        [field: JsonIgnore]
+        public event EventHandler Changed; // Called whenever anything at all is changed
+
         // A list that stores all of the types, formats and users of each of the attribute groups
-        public Dictionary<string, (Entity.AttributeType Type, Entity.AttributeFormat Format, List<Entity> Users)> AttributeGroups = new Dictionary<string, (Entity.AttributeType Type, Entity.AttributeFormat Format, List<Entity> Users)>();
+        [JsonProperty("groups")]
+        public Dictionary<string, (Entity.AttributeType Type, Entity.AttributeFormat Format, List<Entity> Users)> AttributeGroups;
 
         public EntityCollection()
         {
             Entities = new List<Entity>();
+            AttributeGroups = new Dictionary<string, (Entity.AttributeType Type, Entity.AttributeFormat Format, List<Entity> Users)>();
+        }
+
+        [JsonConstructor]
+        private EntityCollection(List<Entity> entities, Dictionary<string, (Entity.AttributeType Type, Entity.AttributeFormat Format, List<Entity> Users)> groups)
+            : this()
+        {
+            foreach (Entity entity in entities)
+            {
+                AddEntity(entity);
+            }
+
+            AttributeGroups = groups;
         }
 
         public void AddEntity(Entity entity)
@@ -79,11 +98,10 @@ namespace RoleplayToolSet
             {
                 AddAttribute(entity, attribute);
             }
-            // Check if this causes any attributes to be removed
-            //CullUnusedGroups();
 
             // Ivoke envents
             EntityAdded?.Invoke(entity, new EventArgs());
+            Changed?.Invoke(this, new EventArgs());
 
             // Bind events
             entity.AttributeAdded += Entity_AttributeAdded;
@@ -111,6 +129,7 @@ namespace RoleplayToolSet
 
             // Ivoke envents
             EntityRemoved?.Invoke(entity, new EventArgs());
+            Changed?.Invoke(this, new EventArgs());
         }
 
         private void Entity_AttributeValueChanged(Entity.Attribute attr, EventArgs eventArgs)
@@ -127,6 +146,7 @@ namespace RoleplayToolSet
 
             // Invoke removed method
             EntityAttributeRemoved?.Invoke(attr, eventArgs);
+            Changed?.Invoke(this, new EventArgs());
         }
 
         private void Entity_AttributeAdded(Entity.Attribute attr, EventArgs eventArgs)
@@ -135,6 +155,7 @@ namespace RoleplayToolSet
 
             // Invoke added method
             EntityAttributeAdded?.Invoke(attr, eventArgs);
+            Changed?.Invoke(this, new EventArgs());
         }
 
         /// <summary>
@@ -211,6 +232,7 @@ namespace RoleplayToolSet
 
             // Invoke
             AttributeGroupRemoved?.Invoke(this, new AttributeGroupEventArgs(groupName));
+            Changed?.Invoke(this, new EventArgs());
         }
 
         /// <summary>
@@ -278,6 +300,7 @@ namespace RoleplayToolSet
 
                 // Invoke changed event
                 AttributeGroupNameChanged?.Invoke(this, new AttributeGroupNameEventArgs(oldName, newName));
+                Changed?.Invoke(this, new EventArgs());
             }
         }
 
@@ -306,6 +329,7 @@ namespace RoleplayToolSet
 
             // Call event
             AttributeGroupFormatChanged?.Invoke(this, new AttributeGroupEventArgs(name));
+            Changed?.Invoke(this, new EventArgs());
         }
 
         /// <summary>

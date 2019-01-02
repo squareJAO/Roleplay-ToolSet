@@ -7,7 +7,6 @@ using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using Newtonsoft.Json;
-using System.Security.Cryptography;
 
 namespace RoleplayToolSet
 {
@@ -46,7 +45,8 @@ namespace RoleplayToolSet
     }
 
     public delegate void EntityAttributeEventHandler(Entity.Attribute attribute, EventArgs eventArgs);
-    
+
+    [JsonObject(IsReference = true)]
     public class Entity
     {
         // ---------------------------------------------------------
@@ -390,7 +390,7 @@ namespace RoleplayToolSet
             [JsonConverter(typeof(ImageConverter))]
             public Image Image { get; private set; }
 
-            [NonSerialized]
+            [JsonIgnore]
             private static readonly Image nullImage = Image.FromFile("images/Portrait_Placeholder.png");
 
             public ImageAttribute(string groupName, Entity parentEntity, AttributeFormat format)
@@ -516,13 +516,20 @@ namespace RoleplayToolSet
         // ---------------------------------------------------------
         // -                Attribute definition                   -
         // ---------------------------------------------------------
-        
+
+        [JsonProperty("attributes")]
         public List<Attribute> Attributes { get; private set; }
-        
+
+        [JsonProperty("nameAttribute")]
+        public StringAttribute NameAttribute { get; private set; } // Used to access the name attribute
+
+        [field: JsonIgnore]
         public event EntityAttributeEventHandler AttributeRemoved;
-        
+
+        [field: JsonIgnore]
         public event EntityAttributeEventHandler AttributeAdded;
-        
+
+        [field: JsonIgnore]
         public event EntityAttributeEventHandler AttributeValueChanged;
         
         public Entity()
@@ -540,8 +547,22 @@ namespace RoleplayToolSet
             if (useDefaultAttributes)
             {
                 // All entities must have a name to begin with
-                AddAttribute(new StringAttribute("Name", this, new AttributeFormat(deleteIfEmpty: false, deleteLocked: true, nameLocked: true), "New Entity"));
+                StringAttribute name = new StringAttribute("Name", this, new AttributeFormat(deleteIfEmpty: false, deleteLocked: true, nameLocked: true), "New Entity");
+                AddAttribute(name);
+                NameAttribute = name;
             }
+        }
+
+        [JsonConstructor]
+        private Entity(List<Attribute> attributes, StringAttribute nameAttribute)
+        {
+            Attributes = new List<Attribute>();
+            foreach (Attribute attribute in attributes)
+            {
+                AddAttribute(attribute);
+            }
+
+            NameAttribute = nameAttribute ?? throw new FormatException("Entity does not contain name attribute, failed to load");
         }
 
         public void AddAttribute(Attribute attribute)
@@ -611,129 +632,27 @@ namespace RoleplayToolSet
         }
 
         /// <summary>
-        /// Generates a string representation of the entity
-        /// </summary>
-        /// <returns>A string representation of the file</returns>
-        public string GenerateStringRepresentation()
-        {
-            using (MemoryStream memoryStream = new MemoryStream())  // Stream to write the file data to
-            {
-                GenerateDataInStream(memoryStream);
-                return Encoding.UTF8.GetString(memoryStream.ToArray());
-            }
-        }
-
-        private const string FileIdentifier = "RoleplayToolSetEntityData";
-
-        /// <summary>
-        /// Generates a binary representation of this inside a stream
-        /// </summary>
-        /// <param name="stream">The stream to write this to</param>
-        private void GenerateDataInStream(Stream stream)
-        {
-            // Create a writer to write binary data to the passed stream
-            BinaryWriter writer = new BinaryWriter(stream);
-
-            // string -> file identifier
-            writer.Write(FileIdentifier);
-
-            // long -> encoder version number
-            writer.Write(1L);
-
-            // int -> number of attributes
-            writer.Write(Attributes.Count);
-
-            foreach (Attribute attr in Attributes)
-            {
-                // int -> Attribute type
-                writer.Write((int)attr.GetAttributeType());
-
-                // Serialise arrtibute
-                string jsonText = JsonConvert.SerializeObject(attr, new JsonSerializerSettings() { PreserveReferencesHandling=PreserveReferencesHandling.All });
-
-                // str -> Json data
-                writer.Write(jsonText);
-            }
-        }
-
-        /// <summary>
         /// Saves the entity to a specified path
         /// </summary>
         /// <param name="path">The path to save to</param>
         /// <exception cref="JsonSerializationException"></exception>
-        public void Save(string path)
+        public void Save(string path, bool overWrite=true)
         {
-            using (FileStream file = new FileStream(path, FileMode.Create))
+            if (!overWrite && File.Exists(path))
             {
-                GenerateDataInStream(file);
-            }
-        }
+                string dir = Path.GetDirectoryName(path);
+                string fileName = Path.GetFileNameWithoutExtension(path);
+                string fileExt = Path.GetExtension(path);
 
-        /// <summary>
-        /// Generates an Entity from a stream
-        /// </summary>
-        /// <param name="stream">The stream to read from</param>
-        /// <exception cref="FormatException"></exception>
-        private static Entity GenerateEntityFromStream(Stream stream)
-        {
-            Entity entity = new Entity(false); // Build a new entity without default attributes
-
-            // Create a writer to write binary data to the passed stream
-            BinaryReader reader = new BinaryReader(stream);
-
-            // string -> file identifier
-            string identifier = reader.ReadString();
-            if (identifier != FileIdentifier)
-            {
-                throw new FormatException("Stream does not follow valid Entity data");
-            }
-
-            // long -> encoder version number
-            long version = reader.ReadInt64();
-            if (version == 1)
-            {
-                // int -> number of attributes
-                int attributeCount = reader.ReadInt32();
-
-                for (int attributeIndex = 0; attributeIndex < attributeCount; attributeIndex++)
+                int i = 1;
+                do
                 {
-                    // int -> Attribute type
-                    AttributeType type = (AttributeType)reader.ReadInt32();
-
-                    // str -> Json data
-                    string jsonText = reader.ReadString();
-
-                    // Deserialise
-                    JsonSerializerSettings settings = new JsonSerializerSettings() { PreserveReferencesHandling = PreserveReferencesHandling.All };
-
-                    Attribute attribute;
-                    switch (type)
-                    {
-                        case AttributeType.Numeric:
-                            attribute = JsonConvert.DeserializeObject<NumericAttribute>(jsonText, settings);
-                            break;
-                        case AttributeType.String:
-                            attribute = JsonConvert.DeserializeObject<StringAttribute>(jsonText, settings);
-                            break;
-                        case AttributeType.Image:
-                            attribute = JsonConvert.DeserializeObject<ImageAttribute>(jsonText, settings);
-                            break;
-                        case AttributeType.Bool:
-                            attribute = JsonConvert.DeserializeObject<BoolAttribute>(jsonText, settings);
-                            break;
-                        default:
-                            throw new FormatException("Attribute type " + type + " not deserialisable");
-                    }
-                    entity.AddAttribute(attribute);
-                    attribute.ParentEntity = entity;
-                }
+                    path = Path.Combine(dir, $"{fileName} ({i}){fileExt}");
+                } while (File.Exists(path));
             }
-            else
-            {
-                throw new FormatException("Entity version not recognised. Try updating RPTS?");
-            }
-
-            return entity;
+            
+            string jsonText = JsonConvert.SerializeObject(this, Form1.SerializerSettings);
+            File.WriteAllText(path, jsonText);
         }
 
         /// <summary>
@@ -750,10 +669,8 @@ namespace RoleplayToolSet
         /// <exception cref="FormatException"></exception>
         public static Entity Load(string path)
         {
-            using (FileStream file = new FileStream(path, FileMode.Open))
-            {
-                return GenerateEntityFromStream(file);
-            }
+            string jsonText = File.ReadAllText(path);
+            return JsonConvert.DeserializeObject<Entity>(jsonText, Form1.SerializerSettings);
         }
     }
 }

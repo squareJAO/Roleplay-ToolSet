@@ -1,26 +1,33 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
 using System.IO;
+using System.Windows.Forms;
+using Newtonsoft.Json;
 
 namespace RoleplayToolSet
 {
     public partial class Form1 : Form
     {
+        private Adventure _adventure;
+        private Settings _settings;
         private FormPlayerOverlay _playerForm; // The form shown to the players
-        private Settings _settings = Settings.GetSettings();
-        private WorldTime _time = new WorldTime();
-        private EntityCollection _entities = new EntityCollection();
+        
+        public static readonly JsonSerializerSettings SerializerSettings = new JsonSerializerSettings()
+        {
+            TypeNameHandling = TypeNameHandling.All,
+            PreserveReferencesHandling = PreserveReferencesHandling.All
+        };
 
         public Form1()
         {
             InitializeComponent();
+
+            // Default values
+            _settings = Settings.GetSettings();
+            _adventure = new Adventure();
+
+            // Create player form
+            _playerForm = new FormPlayerOverlay(_adventure, _settings);
 
             // Format listView
             ImageList imageListSmall = new ImageList
@@ -36,19 +43,17 @@ namespace RoleplayToolSet
             // Init timer
             timerRealTime.Enabled = checkBoxTimeRealLife.Checked;
 
-            // Create player form
-            CreatePlayerForm();
-
             // Set up EntityList
-            entityManager.Entities = _entities;
+            entityManager.Entities = _adventure.Entities;
 
             // Add events
-            _time.TimeChanged += _time_TimeChanged;
+            _adventure.Time.TimeChanged += _time_TimeChanged;
             _settings.ImageStyle.Changed += _settings_ImageStyleChanged;
             _settings.DateFormat.Changed += DateFormat_Changed;
             _settings.RealTimeInterval.Changed += RealTimeInterval_Changed;
             _settings.Calendar.Changed += Calendar_Changed;
             timeInputBox.TimeChanged += TimeInputBox_TimeChanged;
+            _playerForm.FormClosing += _playerForm_FormClosing;
         }
 
         private void TimeInputBox_TimeChanged(object caller, TimeEventArgs eventArgs)
@@ -60,31 +65,40 @@ namespace RoleplayToolSet
                 switch (unit)
                 {
                     case TimeUnit.Years:
-                        _time.AddYears(number);
+                        _adventure.Time.AddYears(number);
                         break;
                     case TimeUnit.Months:
-                        _time.AddMonths(number);
+                        _adventure.Time.AddMonths(number);
                         break;
                     case TimeUnit.Weeks:
-                        _time.AddDays(number * 7);
+                        _adventure.Time.AddDays(number * 7);
                         break;
                     case TimeUnit.Days:
-                        _time.AddDays(number);
+                        _adventure.Time.AddDays(number);
                         break;
                     case TimeUnit.Hours:
-                        _time.AddHours(number);
+                        _adventure.Time.AddHours(number);
                         break;
                     case TimeUnit.Minutes:
-                        _time.AddMinutes(number);
+                        _adventure.Time.AddMinutes(number);
                         break;
                     case TimeUnit.Seconds:
-                        _time.AddSeconds(number);
+                        _adventure.Time.AddSeconds(number);
                         break;
                     case TimeUnit.mSeconds:
-                        _time.AddMilliseconds(number);
+                        _adventure.Time.AddMilliseconds(number);
                         break;
                 }
             }
+        }
+        
+        private void _playerForm_FormClosing(object sender, System.Windows.Forms.FormClosingEventArgs e)
+        {
+            // Don't allow closing, only hiding
+            _playerForm.Visible = false;
+            SetOverlayConfigsEnabled(false);
+            checkBoxOverlayVisible.Checked = false;
+            e.Cancel = true;
         }
 
         private void RealTimeInterval_Changed(object sender, EventArgs e)
@@ -97,20 +111,6 @@ namespace RoleplayToolSet
             RefreshTimeLabel();
         }
 
-        private void CreatePlayerForm()
-        {
-            // Make player overlay & hide
-            _playerForm = new FormPlayerOverlay(_time, _settings)
-            {
-                Visible = checkBoxTimeVisible.Enabled
-            };
-            _playerForm.SetTransparent(checkBoxOverlayTransparent.Enabled);
-            _playerForm.SetTimeVisible(checkBoxTimeVisible.Enabled);
-
-            // Add events
-            _playerForm.FormClosed += PlayerForm_Closed;
-        }
-
         private void _time_TimeChanged(object sender, EventArgs e)
         {
             RefreshTimeLabel();
@@ -118,7 +118,7 @@ namespace RoleplayToolSet
 
         private void RefreshTimeLabel()
         {
-            labelCurrentTime.Text = _time.ToString(_settings.DateFormat.Value);
+            labelCurrentTime.Text = _adventure.Time.ToString(_settings.DateFormat.Value);
         }
 
         private void _settings_ImageStyleChanged(object sender, EventArgs e)
@@ -128,19 +128,8 @@ namespace RoleplayToolSet
 
         private void Calendar_Changed(object sender, EventArgs e)
         {
-            _time.ChangeCalendar(_settings.Calendar.Value);
+            _adventure.Time.ChangeCalendar(_settings.Calendar.Value);
             RefreshTimeLabel();
-        }
-
-        private void PlayerForm_Closed(object sender, EventArgs e)
-        {
-            // Delete currtent player form associations
-            SetOverlayConfigsEnabled(false);
-            this.checkBoxOverlayVisible.Checked = false;
-            _playerForm = null;
-
-            // Create a new player form and ensure to hide
-            CreatePlayerForm();
         }
 
         private void SetOverlayConfigsEnabled(bool enabled)
@@ -155,7 +144,7 @@ namespace RoleplayToolSet
         private void CheckBox1_CheckedChanged(object sender, EventArgs e)
         {
             bool visible = this.checkBoxOverlayVisible.Checked;
-            
+
             _playerForm.Visible = visible;
 
             SetOverlayConfigsEnabled(visible);
@@ -236,12 +225,80 @@ namespace RoleplayToolSet
 
         private void TimerRealTime_Tick(object sender, EventArgs e)
         {
-            _time.AddMilliseconds(timerRealTime.Interval);
+            _adventure.Time.AddMilliseconds(timerRealTime.Interval);
         }
 
         private void CheckBoxTimeRealLife_CheckedChanged(object sender, EventArgs e)
         {
             timerRealTime.Enabled = checkBoxTimeRealLife.Checked;
+        }
+
+        private void saveToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            AdventureSave();
+        }
+
+        private void saveAsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            AdventureSaveAs();
+        }
+
+        private void AdventureSave()
+        {
+            if (string.IsNullOrEmpty(_adventure.SavePath))
+            {
+                AdventureSaveAs();
+            }
+            else
+            {
+                _adventure.SaveAs(_adventure.SavePath);
+            }
+        }
+
+        private void AdventureSaveAs()
+        {
+            SaveFileDialog saveFileDialog = new SaveFileDialog()
+            {
+                Filter = "RolePlay Toolset Adventure|*.RPTSAdvtre|All Files|*.*"
+            };
+            saveFileDialog.ShowDialog();
+            if (!string.IsNullOrEmpty(saveFileDialog.FileName))
+            {
+                _adventure.SaveAs(saveFileDialog.FileName);
+            }
+        }
+
+        private void loadToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (_adventure.Changed)
+            {
+                DialogResult confirmResult = MessageBox.Show("Save changes before loading?",
+                                                             "Load?",
+                                                             MessageBoxButtons.YesNoCancel);
+                if (confirmResult == DialogResult.Cancel)
+                {
+                    return;
+                }
+                if (confirmResult == DialogResult.Yes)
+                {
+                    AdventureSave();
+                }
+            }
+
+            OpenFileDialog openFileDialog = new OpenFileDialog()
+            {
+                Filter = "RolePlay Toolset Adventure|*.RPTSAdvtre|All Files|*.*",
+                Multiselect = false
+            };
+
+            openFileDialog.ShowDialog();
+
+            if (!string.IsNullOrEmpty(openFileDialog.FileName))
+            {
+                _adventure = Adventure.LoadAdventure(openFileDialog.FileName, _settings);
+                _adventure.SavePath = openFileDialog.FileName;
+                entityManager.Entities = _adventure.Entities;
+            }
         }
     }
 }

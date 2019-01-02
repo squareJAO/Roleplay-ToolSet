@@ -47,10 +47,13 @@
             this.checkBoxTimeRealLife = new System.Windows.Forms.CheckBox();
             this.label1 = new System.Windows.Forms.Label();
             this.labelCurrentTime = new System.Windows.Forms.Label();
-            this.tabPage3 = new System.Windows.Forms.TabPage();
-            this.timerRealTime = new System.Windows.Forms.Timer(this.components);
             this.timeInputBox = new RoleplayToolSet.TimeInputBox();
+            this.tabPage3 = new System.Windows.Forms.TabPage();
             this.entityManager = new RoleplayToolSet.EntityManager();
+            this.timerRealTime = new System.Windows.Forms.Timer(this.components);
+            this.saveToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.saveAsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.loadToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
@@ -109,7 +112,10 @@
             // fileToolStripMenuItem
             // 
             this.fileToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.settingsToolStripMenuItem});
+            this.settingsToolStripMenuItem,
+            this.saveToolStripMenuItem,
+            this.saveAsToolStripMenuItem,
+            this.loadToolStripMenuItem});
             this.fileToolStripMenuItem.Name = "fileToolStripMenuItem";
             this.fileToolStripMenuItem.Size = new System.Drawing.Size(37, 20);
             this.fileToolStripMenuItem.Text = "File";
@@ -117,7 +123,7 @@
             // settingsToolStripMenuItem
             // 
             this.settingsToolStripMenuItem.Name = "settingsToolStripMenuItem";
-            this.settingsToolStripMenuItem.Size = new System.Drawing.Size(116, 22);
+            this.settingsToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.settingsToolStripMenuItem.Text = "Settings";
             this.settingsToolStripMenuItem.Click += new System.EventHandler(this.SettingsToolStripMenuItem_Click);
             // 
@@ -265,6 +271,15 @@
             this.labelCurrentTime.Text = "[CurrentTimeHere]";
             this.labelCurrentTime.TextAlign = System.Drawing.ContentAlignment.TopCenter;
             // 
+            // timeInputBox
+            // 
+            this.timeInputBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.timeInputBox.Location = new System.Drawing.Point(6, 78);
+            this.timeInputBox.Name = "timeInputBox";
+            this.timeInputBox.Size = new System.Drawing.Size(914, 148);
+            this.timeInputBox.TabIndex = 3;
+            // 
             // tabPage3
             // 
             this.tabPage3.Controls.Add(this.entityManager);
@@ -276,19 +291,6 @@
             this.tabPage3.Text = "Entities";
             this.tabPage3.UseVisualStyleBackColor = true;
             // 
-            // timerRealTime
-            // 
-            this.timerRealTime.Tick += new System.EventHandler(this.TimerRealTime_Tick);
-            // 
-            // timeInputBox
-            // 
-            this.timeInputBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.timeInputBox.Location = new System.Drawing.Point(6, 78);
-            this.timeInputBox.Name = "timeInputBox";
-            this.timeInputBox.Size = new System.Drawing.Size(914, 148);
-            this.timeInputBox.TabIndex = 3;
-            // 
             // entityManager
             // 
             this.entityManager.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -296,6 +298,31 @@
             this.entityManager.Name = "entityManager";
             this.entityManager.Size = new System.Drawing.Size(925, 509);
             this.entityManager.TabIndex = 0;
+            // 
+            // timerRealTime
+            // 
+            this.timerRealTime.Tick += new System.EventHandler(this.TimerRealTime_Tick);
+            // 
+            // saveToolStripMenuItem
+            // 
+            this.saveToolStripMenuItem.Name = "saveToolStripMenuItem";
+            this.saveToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.saveToolStripMenuItem.Text = "Save";
+            this.saveToolStripMenuItem.Click += new System.EventHandler(this.saveToolStripMenuItem_Click);
+            // 
+            // saveAsToolStripMenuItem
+            // 
+            this.saveAsToolStripMenuItem.Name = "saveAsToolStripMenuItem";
+            this.saveAsToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.saveAsToolStripMenuItem.Text = "Save As";
+            this.saveAsToolStripMenuItem.Click += new System.EventHandler(this.saveAsToolStripMenuItem_Click);
+            // 
+            // loadToolStripMenuItem
+            // 
+            this.loadToolStripMenuItem.Name = "loadToolStripMenuItem";
+            this.loadToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.loadToolStripMenuItem.Text = "Load";
+            this.loadToolStripMenuItem.Click += new System.EventHandler(this.loadToolStripMenuItem_Click);
             // 
             // Form1
             // 
@@ -344,6 +371,9 @@
         private System.Windows.Forms.CheckBox checkBoxTimeRealLife;
         private System.Windows.Forms.TabPage tabPage3;
         private EntityManager entityManager;
+        private System.Windows.Forms.ToolStripMenuItem saveToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem saveAsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem loadToolStripMenuItem;
     }
 }
 

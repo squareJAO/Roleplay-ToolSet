@@ -38,6 +38,9 @@
     <Reference Include="NodaTime, Version=2.4.2.0, Culture=neutral, PublicKeyToken=4226afe0d9b296d1, processorArchitecture=MSIL">
       <HintPath>..\packages\NodaTime.2.4.2\lib\net45\NodaTime.dll</HintPath>
     </Reference>
+    <Reference Include="NodaTime.Serialization.JsonNet, Version=2.0.0.0, Culture=neutral, PublicKeyToken=4226afe0d9b296d1, processorArchitecture=MSIL">
+      <HintPath>..\packages\NodaTime.Serialization.JsonNet.2.0.0\lib\net45\NodaTime.Serialization.JsonNet.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
@@ -55,13 +58,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Adventure.cs" />
     <Compile Include="Entity.cs" />
     <Compile Include="EntityCollection.cs" />
     <Compile Include="EntityDetailedDisplay.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="EntityDetailedDisplay.Designer.cs">
-      <DependentUpon>EntityDetailedDisplay.cs</DependentUpon>
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="EntityList.cs">
       <SubType>Component</SubType>
@@ -101,9 +102,6 @@
     </Compile>
     <Compile Include="TimeInputBox.cs" />
     <Compile Include="WorldTime.cs" />
-    <EmbeddedResource Include="EntityDetailedDisplay.resx">
-      <DependentUpon>EntityDetailedDisplay.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="EntityManager.resx">
       <DependentUpon>EntityManager.cs</DependentUpon>
     </EmbeddedResource>
@@ -140,7 +138,6 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
-  <ItemGroup />
   <ItemGroup>
     <Content Include="images\BlankImage.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

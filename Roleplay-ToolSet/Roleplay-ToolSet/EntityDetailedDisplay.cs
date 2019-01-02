@@ -7,13 +7,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.IO;
-using System.Runtime.Serialization;
-using Newtonsoft.Json;
 
 namespace RoleplayToolSet
 {
-    public partial class EntityDetailedDisplay : UserControl
+    public partial class EntityDetailedDisplay : FlowLayoutPanel
     {
         /// <summary>
         /// Displays a single detail from an entity
@@ -249,7 +246,6 @@ namespace RoleplayToolSet
 
         public EntityDetailedDisplay()
         {
-            InitializeComponent();
             EntityRefresh();
         }
 
@@ -259,7 +255,7 @@ namespace RoleplayToolSet
             this.SuspendLayout();
 
             // Clear current attribute display
-            this.flowLayoutPanelAttributes.Controls.Clear();
+            this.Controls.Clear();
 
             if (_entity != null)
             {
@@ -271,21 +267,21 @@ namespace RoleplayToolSet
                     {
                         Size = new Size(200, 150)
                     };
-                    this.flowLayoutPanelAttributes.Controls.Add(attributeViewer);
+                    this.Controls.Add(attributeViewer);
                 }
 
                 List<Entity.Attribute> unassignedAttributes = _entityCollection.GetUnassignedAttributes(_entity);
-                if (unassignedAttributes.Count > 0 && flowLayoutPanelAttributes.Controls.Count > 0) // Only make a divider if there are unassigned attributes and normal attributes
+                if (unassignedAttributes.Count > 0 && this.Controls.Count > 0) // Only make a divider if there are unassigned attributes and normal attributes
                 {
                     // Make a divider
-                    flowLayoutPanelAttributes.SetFlowBreak(this.flowLayoutPanelAttributes.Controls[this.flowLayoutPanelAttributes.Controls.Count - 1], true);
+                    this.SetFlowBreak(this.Controls[this.Controls.Count - 1], true);
                     Label divider = new Label
                     {
-                        Size = new Size(flowLayoutPanelAttributes.Width, 20),
+                        Size = new Size(this.Width, 20),
                         Text = "Unassigned Attributes: ",
                         Anchor = AnchorStyles.Left | AnchorStyles.Right
                     };
-                    flowLayoutPanelAttributes.Controls.Add(divider);
+                    this.Controls.Add(divider);
                 }
 
                 // Loop through all unassigned attributes and add to display
@@ -297,13 +293,9 @@ namespace RoleplayToolSet
                         Size = new Size(200, 150),
                         BackColor = Color.LightGray
                     };
-                    this.flowLayoutPanelAttributes.Controls.Add(attributeViewer);
+                    this.Controls.Add(attributeViewer);
                 }
             }
-
-            buttonDeleteEntity.Enabled = _entity != null;
-            buttonAddAttibute.Enabled = _entity != null;
-            buttonSaveEntity.Enabled = _entity != null;
 
             this.ResumeLayout();
         }
@@ -316,100 +308,6 @@ namespace RoleplayToolSet
         private void AttributeViewer_AttributeRemoved(Entity.Attribute attr, EventArgs eventArgs)
         {
             _entity.RemoveAttribute(attr);
-        }
-
-        private void ButtonDeleteEntity_Click(object sender, EventArgs e)
-        {
-            if (MessageBox.Show("Are you sure you want to remove this entity?", "Remove", MessageBoxButtons.YesNo) == DialogResult.Yes) // Check that the user ment to click remove
-            {
-                _entityCollection.RemoveEntity(_entity);
-            }
-        }
-
-        private void ButtonAddEntity_Click(object sender, EventArgs e)
-        {
-            _entityCollection.AddEntity(new Entity());
-        }
-
-        private void ButtonAddAttibute_Click(object sender, EventArgs e)
-        {
-            //Generate a menu to select the type of attribute
-            ContextMenu menu = new ContextMenu();
-            foreach (Entity.AttributeType type in Enum.GetValues(typeof(Entity.AttributeType)))
-            {
-                void eventHandler(object o, EventArgs e2)
-                {
-                    Entity.AttributeFormat format = new Entity.AttributeFormat();
-                    _entity.AddAttribute(Entity.MakeNewAttribute(type, "New Attribute", _entity, format));
-                }
-                menu.MenuItems.Add(Enum.GetName(typeof(Entity.AttributeType), type), eventHandler);
-            }
-            menu.Show(buttonAddAttibute, buttonAddAttibute.PointToClient(Cursor.Position));
-        }
-
-        private void ButtonSaveEntity_Click(object sender, EventArgs e)
-        {
-            SaveFileDialog fileDialog = new SaveFileDialog
-            {
-                DefaultExt = "RPTSEntity",
-                Filter = "Entity File|*.RPTSEntity|All Files|*.*"
-            };
-            fileDialog.ShowDialog();
-            if (fileDialog.FileName != "")
-            {
-                try
-                {
-                    _entity.Save(fileDialog.FileName);
-                }
-                catch (JsonSerializationException exception)
-                {
-                    string message = "An error was encountered when trying to serialise the entity: " + exception.Message + "\n" + exception.StackTrace;
-                    MessageBox.Show(message, "Export error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-        }
-
-        private void ButtonLoadEntity_Click(object sender, EventArgs e)
-        {
-            OpenFileDialog fileDialog = new OpenFileDialog
-            {
-                DefaultExt = "RPTSEntity",
-                Filter = "Entity File|*.RPTSEntity|All Files|*.*"
-            };
-            fileDialog.ShowDialog();
-            if (fileDialog.FileName != "")
-            {
-                try
-                {
-                    Entity entity = Entity.Load(fileDialog.FileName);
-                    _entityCollection.AddEntity(entity);
-                }
-                catch (Exception exception)
-                {
-                    string message;
-
-                    if (exception is UnauthorizedAccessException ||
-                        exception is PathTooLongException ||
-                        exception is DirectoryNotFoundException ||
-                        exception is FileNotFoundException)
-                    {
-                        message = "An error was encountered when trying to open the file: ";
-                    }
-                    else if (exception is JsonSerializationException ||
-                             exception is JsonReaderException ||
-                             exception is FormatException)
-                    {
-                        message = "An error was encountered when trying to deserialise the entity: ";
-                    }
-                    else
-                    {
-                        throw exception;
-                    }
-
-                    message += exception.Message;
-                    MessageBox.Show(message, "Import error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
         }
     }
 }
