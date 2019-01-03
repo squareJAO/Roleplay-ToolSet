@@ -372,6 +372,10 @@ namespace RoleplayToolSet
             };
             menu.MenuItems.Add(itemChangeName);
 
+            // Change default button DefaultValueFormEventGenerator
+            MenuItem itemChangeDefault = new MenuItem("Change Default Value", _entityCollection.DefaultValueFormEventGenerator(attrName));
+            menu.MenuItems.Add(itemChangeDefault);
+
             // Delete button
             MenuItem itemDelete = new MenuItem("Delete Group", (a, b) =>
             {

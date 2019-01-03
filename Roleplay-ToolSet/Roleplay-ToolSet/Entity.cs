@@ -79,21 +79,26 @@ namespace RoleplayToolSet
             // The attribute group can't be renamed by the user - eg name
             public bool NameLocked { get; private set; }
 
+            // The value that any new object should take
+            public string DefaultValue { get; private set; }
+
             [JsonConstructor]
-            public AttributeFormat(int style = 0, bool deleteIfEmpty=false, bool deleteLocked=false, bool nameLocked = false)
+            public AttributeFormat(int style = 0, bool deleteIfEmpty=false, bool deleteLocked=false, bool nameLocked = false, string defaultValue =null)
             {
                 Style = style;
                 DeleteIfEmpty = deleteIfEmpty;
                 DeleteLocked = deleteLocked;
                 NameLocked = nameLocked;
+                DefaultValue = defaultValue;
             }
 
-            public AttributeFormat(AttributeFormat format, string columnName = null, int? style = null, bool? deleteIfEmpty = null)
+            public AttributeFormat(AttributeFormat format, string columnName = null, int? style = null, bool? deleteIfEmpty = null, string defaultValue = null)
             {
                 Style = style ?? format.Style;
                 DeleteIfEmpty = deleteIfEmpty ?? format.DeleteIfEmpty;
                 DeleteLocked = format.DeleteLocked;
                 NameLocked = format.NameLocked;
+                DefaultValue = defaultValue ?? format.DefaultValue;
             }
         }
 
@@ -168,9 +173,10 @@ namespace RoleplayToolSet
             public decimal Number { get; private set; }
 
             public NumericAttribute(string groupName, Entity parentEntity, AttributeFormat format)
-                : this(groupName, parentEntity, format, 0)
+                : base(groupName, parentEntity, format)
             {
-
+                decimal.TryParse(format.DefaultValue, out decimal i);
+                Number = i;
             }
 
             [JsonConstructor]
@@ -268,7 +274,7 @@ namespace RoleplayToolSet
             public RTFString Value { get; private set; }
 
             public StringAttribute(string groupName, Entity parentEntity, AttributeFormat format)
-                : this(groupName, parentEntity, format, "")
+                : this(groupName, parentEntity, format, format.DefaultValue ?? "")
             {
 
             }
@@ -397,9 +403,23 @@ namespace RoleplayToolSet
             private static readonly Image nullImage = Image.FromFile("images/Portrait_Placeholder.png");
 
             public ImageAttribute(string groupName, Entity parentEntity, AttributeFormat format)
-                : this(groupName, parentEntity, format, nullImage)
+                : base(groupName, parentEntity, format)
             {
-
+                if (string.IsNullOrEmpty(format.DefaultValue))
+                {
+                    Image = nullImage;
+                }
+                else
+                {
+                    try
+                    {
+                        Image = Image.FromFile(format.DefaultValue);
+                    }
+                    catch (FileNotFoundException)
+                    {
+                        Image = nullImage;
+                    }
+                }
             }
 
             [JsonConstructor]
@@ -472,7 +492,7 @@ namespace RoleplayToolSet
             public bool Value { get; private set; }
 
             public BoolAttribute(string groupName, Entity parentEntity, AttributeFormat format)
-                : this(groupName, parentEntity, format, false)
+                : this(groupName, parentEntity, format, format.DefaultValue == "true")
             {
 
             }
@@ -525,7 +545,7 @@ namespace RoleplayToolSet
             private string _result; // The result of the last time the formula was executed
 
             public FormulaAttribute(string groupName, Entity parentEntity, AttributeFormat format)
-                : this(groupName, parentEntity, format, new Expression(""))
+                : this(groupName, parentEntity, format, new Expression(format.DefaultValue ?? ""))
             {
 
             }
@@ -651,7 +671,7 @@ namespace RoleplayToolSet
             if (useDefaultAttributes)
             {
                 // All entities must have a name to begin with
-                StringAttribute name = new StringAttribute("Name", this, new AttributeFormat(deleteIfEmpty: false, deleteLocked: true, nameLocked: true), "New Entity");
+                StringAttribute name = new StringAttribute("Name", this, new AttributeFormat(deleteIfEmpty: false, deleteLocked: true, nameLocked: true, defaultValue: "New Entity"));
                 AddAttribute(name);
                 NameAttribute = name;
             }

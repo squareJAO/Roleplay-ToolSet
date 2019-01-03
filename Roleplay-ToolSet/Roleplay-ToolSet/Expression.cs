@@ -133,7 +133,7 @@ namespace RoleplayToolSet
                 if (right.IsError)
                     return right;
 
-                if (functionName == "add" || functionName == "sub" || functionName == "mult" || functionName == "div")
+                if (functionName == "add" || functionName == "sub" || functionName == "mult" || functionName == "div" || functionName == "gt" || functionName == "lt")
                 {
                     bool isLeftInt = decimal.TryParse(left.Value, out decimal leftDec);
                     bool isRightInt = decimal.TryParse(right.Value, out decimal rightDec);
@@ -160,6 +160,18 @@ namespace RoleplayToolSet
                         }
                         return new StringOrError(false, (leftDec / rightDec).ToString());
                     }
+                    if (functionName == "gt")
+                    {
+                        return new StringOrError(false, (leftDec > rightDec).ToString());
+                    }
+                    if (functionName == "lt")
+                    {
+                        return new StringOrError(false, (leftDec < rightDec).ToString());
+                    }
+                }
+                if (functionName == "eq")
+                {
+                    return new StringOrError(false, (left.Value == right.Value).ToString());
                 }
             }
 

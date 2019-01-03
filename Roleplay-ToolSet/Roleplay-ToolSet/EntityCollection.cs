@@ -307,29 +307,34 @@ namespace RoleplayToolSet
         /// <summary>
         /// Changes the format of an attribute group
         /// </summary>
-        /// <param name="name">The name of the format</param>
+        /// <param name="groupName">The name of the format</param>
         /// <param name="newFormat">The format to change it to</param>
-        public void ChangeAttributeGroupFormat(string name, Entity.AttributeFormat newFormat)
+        public void ChangeAttributeGroupFormat(string groupName, Entity.AttributeFormat newFormat)
         {
-            foreach (Entity entity in AttributeGroups[name].Users)
+            foreach (Entity entity in AttributeGroups[groupName].Users)
             {
                 foreach (Entity.Attribute attribute in entity.Attributes)
                 {
-                    if (attribute.GroupName == name)
+                    if (attribute.GroupName == groupName)
                     {
                         attribute.ChangeFormat(newFormat);
                     }
                 }
             }
 
-            AttributeGroups[name] = (AttributeGroups[name].Type, newFormat, AttributeGroups[name].Users);
+            AttributeGroups[groupName] = (AttributeGroups[groupName].Type, newFormat, AttributeGroups[groupName].Users);
 
             // Check if this causes any attributes to be removed
             CullUnusedGroups();
 
             // Call event
-            AttributeGroupFormatChanged?.Invoke(this, new AttributeGroupEventArgs(name));
+            AttributeGroupFormatChanged?.Invoke(this, new AttributeGroupEventArgs(groupName));
             Changed?.Invoke(this, new EventArgs());
+        }
+
+        public void ChangeAttributeGroupDefault(string groupName, string newDefault)
+        {
+            ChangeAttributeGroupFormat(groupName, new Entity.AttributeFormat(AttributeGroups[groupName].Format, defaultValue: newDefault));
         }
 
         /// <summary>
@@ -347,6 +352,43 @@ namespace RoleplayToolSet
                 if (dialogResult == DialogResult.OK)
                 {
                     ChangeAttributeGroupName(current, form.GetInputtedText());
+                }
+            }
+
+            return ChangeName;
+        }
+
+        /// <summary>
+        /// Generates a handler to generate a form to input a new default value
+        /// </summary>
+        /// <param name="groupName">The name of the attribute</param>
+        /// <returns>A handler to create a form</returns>
+        public EventHandler DefaultValueFormEventGenerator(string groupName)
+        {
+            void ChangeName(object sender, EventArgs e)
+            {
+                if (AttributeGroups[groupName].Type == Entity.AttributeType.Image)
+                {
+                    OpenFileDialog fileDialog = new OpenFileDialog()
+                    {
+                        Multiselect = false,
+                        Filter = "ImageFile|*.BMP;*.JPG;*.GIF;*.PNG|All files|*.*"
+                    };
+
+                    if (!string.IsNullOrEmpty(fileDialog.FileName))
+                    {
+                        ChangeAttributeGroupDefault(groupName, fileDialog.FileName);
+                    }
+                }
+                else
+                {
+                    TextInputBox form = new TextInputBox("Change Attribute Default", "New Default:", AttributeGroups[groupName].Format.DefaultValue);
+                    DialogResult dialogResult = form.ShowDialog();
+
+                    if (dialogResult == DialogResult.OK)
+                    {
+                        ChangeAttributeGroupDefault(groupName, form.GetInputtedText());
+                    }
                 }
             }
 
